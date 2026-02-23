@@ -1,6 +1,6 @@
 import { addTodo } from "@/db";
 import type { DbClient } from "@/db";
-import { parseDateString, parseIdsList, parsePriority } from "./shared";
+import { parseDateString, parseIdsList, parsePriority, parseTodoStatus } from "./shared";
 
 type AddValues = {
   description?: string;
@@ -21,10 +21,7 @@ export async function runAddCommand(db: DbClient, values: AddValues): Promise<st
     throw new Error("Missing required --description option");
   }
 
-  const status = values.status ?? "todo";
-  if (status !== "todo" && status !== "in_progress" && status !== "completed") {
-    throw new Error("Invalid --status. Use todo, in_progress, or completed");
-  }
+  const status = parseTodoStatus(values.status ?? "todo", "--status");
 
   let predecessorIds: number[] = [];
   if (values.predecessors && values.predecessors.trim().length > 0) {

@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { todosTable } from "../schema";
 import type { DbClient, TodoInsert, TodoUpdate } from "./types";
-import { addDependency } from "./dependencies";
+import { addDependency, replaceTodoPredecessors } from "./dependencies";
 import { ensureTagPath } from "./tags";
 
 type SchedulableTodo = {
@@ -254,4 +254,28 @@ export async function addTodo(
   }
 
   return getTodoById(db, created.id);
+}
+
+export async function updateTodoWithRelations(
+  db: DbClient,
+  input: {
+    id: number;
+    changes: TodoUpdate;
+    predecessorIds?: number[];
+  }
+) {
+  const existing = await getTodoById(db, input.id);
+  if (!existing) {
+    return undefined;
+  }
+
+  if (Object.keys(input.changes).length > 0) {
+    await updateTodo(db, input.id, input.changes);
+  }
+
+  if (input.predecessorIds !== undefined) {
+    await replaceTodoPredecessors(db, input.id, input.predecessorIds);
+  }
+
+  return getTodoById(db, input.id);
 }

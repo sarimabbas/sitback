@@ -44,3 +44,11 @@ export function parseBooleanString(raw: string, optionName: string): boolean {
 
   throw new Error(`Invalid ${optionName}. Use true or false`);
 }
+
+export function parseTodoStatus(raw: string, optionName: string): "todo" | "in_progress" | "completed" {
+  if (raw === "todo" || raw === "in_progress" || raw === "completed") {
+    return raw;
+  }
+
+  throw new Error(`Invalid ${optionName}. Use todo, in_progress, or completed`);
+}

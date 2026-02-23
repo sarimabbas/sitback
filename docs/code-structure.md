@@ -13,6 +13,7 @@ flowchart TD
   subgraph Commands[src/commands/*]
     CmdAdd[runAddCommand]
     CmdDelete[runDeleteCommand]
+    CmdUpdate[runUpdateCommand]
     CmdGet[runGetCommand]
     CmdTag[runTagCommand add/get/update/delete]
     CmdExport[runExportCommand]
@@ -51,6 +52,7 @@ flowchart TD
     QTNext[getNextTodos]
     QTForGet[getTodosForGet]
     QTAdd[addTodo]
+    QTUpdateRel[updateTodoWithRelations]
     QTSort[compareTodosForScheduling]
   end
 
@@ -69,6 +71,7 @@ flowchart TD
 
   subgraph QDeps[src/db/queries/dependencies.ts]
     QDAdd[addDependency]
+    QDReplace[replaceTodoPredecessors]
   end
 
   subgraph QExport[src/db/queries/export.ts]
@@ -78,7 +81,7 @@ flowchart TD
   end
 
   Migrations[drizzle/*.sql\nDDL + constraints + triggers]
-  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
+  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/update.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
 
   CInit --> DInit
   DInit --> DEnsure
@@ -87,18 +90,24 @@ flowchart TD
   DRunMig --> Migrations
 
   CTodoCmd --> CmdAdd
+  CTodoCmd --> CmdUpdate
   CTodoCmd --> CmdDelete
   CTodoCmd --> CmdGet
   CTagCmd --> CmdTag
   CExportCmd --> CmdExport
 
   CmdAdd --> CmdShared
+  CmdUpdate --> CmdShared
   CmdDelete --> CmdShared
   CmdGet --> CmdShared
   CmdTag --> CmdShared
   CmdExport --> CmdMarkdown
 
   CmdAdd --> QTAdd
+  CmdUpdate --> QTUpdate
+  CmdUpdate --> QTUpdateRel
+  CmdUpdate --> QGResolve
+  CmdUpdate --> QGById
   CmdDelete --> QTDelete
   CmdTag --> QGPath
   CmdTag --> QGSummary
@@ -108,6 +117,9 @@ flowchart TD
   QTAdd --> QTGetById
   QTAdd --> QDAdd
   QTAdd --> QGPath
+  QTUpdateRel --> QTUpdate
+  QTUpdateRel --> QTGetById
+  QTUpdateRel --> QDReplace
 
   CmdGet --> QTByIds
   CmdGet --> QTForGet
@@ -142,6 +154,7 @@ flowchart TD
   QGUpdate --> STags
   QGDelete --> STags
   QDAdd --> SDeps
+  QDReplace --> SDeps
 
   QBarrel --> QTodos
   QBarrel --> QTags
