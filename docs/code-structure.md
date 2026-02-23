@@ -14,7 +14,7 @@ flowchart TD
     CmdAdd[runAddCommand]
     CmdDelete[runDeleteCommand]
     CmdGet[runGetCommand]
-    CmdTag[runTagCommand]
+    CmdTag[runTagCommand add/get/update/delete]
     CmdExport[runExportCommand]
     CmdShared[parsePositiveInteger / parseIdsList / parseDateString / parsePriority / parseBooleanString]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
@@ -58,6 +58,8 @@ flowchart TD
     QGCreate[createTag]
     QGById[getTagById]
     QGAll[getTags]
+    QGResolve[resolveTagPath]
+    QGSummary[getTagSummary]
     QGUpdate[updateTag]
     QGDelete[deleteTag]
     QGPath[ensureTagPath]
@@ -99,6 +101,7 @@ flowchart TD
   CmdAdd --> QTAdd
   CmdDelete --> QTDelete
   CmdTag --> QGPath
+  CmdTag --> QGSummary
   CmdTag --> QGUpdate
   CmdTag --> QGDelete
   QTAdd --> QTCreate
@@ -108,6 +111,8 @@ flowchart TD
 
   CmdGet --> QTByIds
   CmdGet --> QTForGet
+  CmdGet --> QGResolve
+  CmdGet --> QGById
   QTForGet --> QTSelect
   QTByIds --> QTSelect
   QTGetById --> QTSelect

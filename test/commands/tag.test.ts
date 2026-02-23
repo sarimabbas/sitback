@@ -38,6 +38,36 @@ describe("cli tag", () => {
     expect(updated.name).toBe("services");
   });
 
+  test("tag get returns tag tree and recursive todo count", () => {
+    runCli(["tag", "add", "--path", "root/child/grandchild"], configDir);
+    runCli(["todo", "add", "--description", "on child", "--tag", "root/child", "--status", "todo"], configDir);
+    runCli(
+      ["todo", "add", "--description", "on grandchild", "--tag", "root/child/grandchild", "--status", "todo"],
+      configDir
+    );
+
+    const result = runCli(["tag", "get", "--id", "2"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    const payload = Bun.JSON5.parse(result.stdout) as {
+      tag: { id: number; name: string; parentId: number | null };
+      tagTree: {
+        id: number;
+        name: string;
+        parentId: number | null;
+        children: Array<{ id: number; name: string; parentId: number | null; children: unknown[] }>;
+      };
+      todoCount: number;
+    };
+
+    expect(payload.tag.id).toBe(2);
+    expect(payload.tag.name).toBe("child");
+    expect(payload.tagTree.id).toBe(2);
+    expect(payload.tagTree.children).toHaveLength(1);
+    expect(payload.tagTree.children[0]?.name).toBe("grandchild");
+    expect(payload.todoCount).toBe(2);
+  });
+
   test("tag delete cascades children and unlinks todos", () => {
     const parentAdd = runCli(["tag", "add", "--path", "engineering/backend"], configDir);
     const child = Bun.JSON5.parse(parentAdd.stdout) as Record<string, unknown>;

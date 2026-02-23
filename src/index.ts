@@ -17,8 +17,9 @@ Usage:
   sb help
   sb todo add --description <text> [--tag path/to/tag] [--status todo|in_progress|completed] [--predecessors 1,2] [--priority 1-5] [--due-date YYYY-MM-DD]
   sb todo delete --ids 1,2
-  sb todo get [--ids 1,2] [--num 3] [--blocked true|false] [--min-priority 3] [--due-before YYYY-MM-DD] [--due-after YYYY-MM-DD]
+  sb todo get [--ids 1,2] [--num 3] [--blocked true|false] [--min-priority 3] [--due-before YYYY-MM-DD] [--due-after YYYY-MM-DD] [--tag path/to/tag] [--tag-id 2]
   sb tag add --path parent/child
+  sb tag get --id 12
   sb tag update --id 12 --name newname
   sb tag delete --id 12
   sb export [--format json5|markdown]
@@ -28,7 +29,7 @@ Usage:
 Commands:
   help      Show this help output
   todo      Manage todos (add, get, delete)
-  tag       Manage tags (add, update, delete)
+  tag       Manage tags (add, get, update, delete)
   export    Export tag and todo trees
 
 Global options:
@@ -46,7 +47,10 @@ Examples:
   sb todo get --ids 4,8,15
   sb todo get --blocked true --min-priority 4
   sb todo get --due-before 2030-12-31
+  sb todo get --tag work/backend
+  sb todo get --tag-id 2
   sb tag add --path work/backend
+  sb tag get --id 2
   sb tag update --id 2 --name services
   sb tag delete --id 2
   sb export
@@ -74,6 +78,7 @@ const parsed = parseArgs({
     path: { type: "string" },
     id: { type: "string" },
     name: { type: "string" },
+    "tag-id": { type: "string" },
     ids: { type: "string" },
     num: { type: "string" },
     blocked: { type: "string" },
@@ -145,7 +150,9 @@ if (command === "todo") {
         blocked: values.blocked,
         minPriority: values["min-priority"],
         dueBefore: values["due-before"],
-        dueAfter: values["due-after"]
+        dueAfter: values["due-after"],
+        tag: values.tag,
+        tagId: values["tag-id"]
       });
       for (const warning of result.warnings) {
         console.error(warning);

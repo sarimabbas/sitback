@@ -162,6 +162,7 @@ export async function getTodosForGet(
     minPriority?: number;
     dueBefore?: string;
     dueAfter?: string;
+    tagId?: number;
   }
 ) {
   const conditions = [] as ReturnType<typeof sql>[];
@@ -186,6 +187,19 @@ export async function getTodosForGet(
 
   if (options.dueAfter) {
     conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} >= ${options.dueAfter}`);
+  }
+
+  if (options.tagId !== undefined) {
+    conditions.push(sql`${todosTable.tagId} in (
+      with recursive descendants(id) as (
+        select ${options.tagId}
+        union all
+        select t.id
+        from tags t
+        join descendants d on t.parent_id = d.id
+      )
+      select id from descendants
+    )`);
   }
 
   const rows = await db

@@ -101,4 +101,27 @@ describe("cli get", () => {
     const highPriorityTodos = Bun.JSON5.parse(highPriority.stdout) as Array<Record<string, unknown>>;
     expect(highPriorityTodos).toHaveLength(0);
   });
+
+  test("filters todos by tag path and includes descendant tags", () => {
+    runCli(["tag", "add", "--path", "work/backend/api"], configDir);
+    runCli(["todo", "add", "--description", "backend task", "--tag", "work/backend", "--status", "todo"], configDir);
+    runCli(["todo", "add", "--description", "api task", "--tag", "work/backend/api", "--status", "todo"], configDir);
+    runCli(["todo", "add", "--description", "other task", "--tag", "work", "--status", "todo"], configDir);
+
+    const result = runCli(["todo", "get", "--tag", "work/backend", "--num", "10"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    const todos = Bun.JSON5.parse(result.stdout) as Array<Record<string, unknown>>;
+    const descriptions = todos.map((todo) => String(todo.description));
+    expect(descriptions).toContain("backend task");
+    expect(descriptions).toContain("api task");
+    expect(descriptions).not.toContain("other task");
+  });
+
+  test("rejects using --tag and --tag-id together", () => {
+    const result = runCli(["todo", "get", "--tag", "work/backend", "--tag-id", "2"], configDir);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Use either --tag or --tag-id, not both");
+  });
 });

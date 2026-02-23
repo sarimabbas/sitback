@@ -1,6 +1,14 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { tagsTable } from "../schema";
+import { sql } from "drizzle-orm";
+import { tagsTable, todosTable } from "../schema";
 import type { DbClient, TagInsert, TagUpdate } from "./types";
+
+type TagTreeNode = {
+  id: number;
+  name: string;
+  parentId: number | null;
+  children: TagTreeNode[];
+};
 
 export async function createTag(db: DbClient, tag: TagInsert) {
   const [created] = await db.insert(tagsTable).values(tag).returning();
@@ -57,8 +65,32 @@ function normalizeTagPath(tagPath: string): string[] {
   return normalized;
 }
 
+export async function resolveTagPath(db: DbClient, tagPath: string) {
+  const segments = normalizeTagPath(tagPath);
+
+  let parentId: number | null = null;
+  let currentTag: Awaited<ReturnType<typeof getTagById>> | undefined;
+
+  for (const segment of segments) {
+    const existing = await findTagByNameAndParent(db, segment, parentId);
+    if (!existing) {
+      return undefined;
+    }
+
+    currentTag = existing;
+    parentId = existing.id;
+  }
+
+  return currentTag;
+}
+
 export async function ensureTagPath(db: DbClient, tagPath: string) {
   const segments = normalizeTagPath(tagPath);
+  const resolved = await resolveTagPath(db, tagPath);
+
+  if (resolved) {
+    return resolved;
+  }
 
   let parentId: number | null = null;
   let currentTag: Awaited<ReturnType<typeof getTagById>> | undefined;
@@ -72,10 +104,7 @@ export async function ensureTagPath(db: DbClient, tagPath: string) {
       continue;
     }
 
-    const created = await createTag(
-      db,
-      parentId === null ? { name: segment } : { name: segment, parentId }
-    );
+    const created = await createTag(db, parentId === null ? { name: segment } : { name: segment, parentId });
 
     currentTag = created;
     parentId = created?.id ?? null;
@@ -86,4 +115,89 @@ export async function ensureTagPath(db: DbClient, tagPath: string) {
   }
 
   return currentTag;
+}
+
+export async function getTagSummary(db: DbClient, id: number) {
+  const tag = await getTagById(db, id);
+
+  if (!tag) {
+    return undefined;
+  }
+
+  const descendantRows = await db
+    .select({
+      id: tagsTable.id,
+      name: tagsTable.name,
+      parentId: tagsTable.parentId
+    })
+    .from(tagsTable)
+    .where(sql`${tagsTable.id} in (
+      with recursive descendants(id) as (
+        select ${id}
+        union all
+        select t.id
+        from tags t
+        join descendants d on t.parent_id = d.id
+      )
+      select id from descendants
+    )`);
+
+  const tagNodesById = new Map<number, TagTreeNode>(
+    descendantRows.map((row) => [
+      row.id,
+      {
+        id: row.id,
+        name: row.name,
+        parentId: row.parentId,
+        children: []
+      }
+    ])
+  );
+
+  for (const node of tagNodesById.values()) {
+    if (node.parentId === null || node.id === id) {
+      continue;
+    }
+
+    const parent = tagNodesById.get(node.parentId);
+    if (parent) {
+      parent.children.push(node);
+    }
+  }
+
+  const sortTree = (node: TagTreeNode) => {
+    node.children.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+    for (const child of node.children) {
+      sortTree(child);
+    }
+  };
+
+  const tagTree = tagNodesById.get(id);
+  if (!tagTree) {
+    return undefined;
+  }
+
+  sortTree(tagTree);
+
+  const [countRow] = await db
+    .select({
+      todoCount: sql<number>`count(*)`
+    })
+    .from(todosTable)
+    .where(sql`${todosTable.tagId} in (
+      with recursive descendants(id) as (
+        select ${id}
+        union all
+        select t.id
+        from tags t
+        join descendants d on t.parent_id = d.id
+      )
+      select id from descendants
+    )`);
+
+  return {
+    tag,
+    tagTree,
+    todoCount: countRow?.todoCount ?? 0
+  };
 }

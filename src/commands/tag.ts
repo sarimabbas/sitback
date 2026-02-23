@@ -1,4 +1,4 @@
-import { deleteTag, ensureTagPath, getTagById, updateTag } from "@/db";
+import { deleteTag, ensureTagPath, getTagById, getTagSummary, updateTag } from "@/db";
 import type { DbClient } from "@/db";
 import { parsePositiveInteger } from "./shared";
 
@@ -83,6 +83,21 @@ export async function runTagCommand(
         2
       ) ?? ""
     );
+  }
+
+  if (subcommand === "get") {
+    const idRaw = values.id?.trim();
+    if (!idRaw) {
+      throw new Error("Missing required --id option");
+    }
+
+    const id = parsePositiveInteger(idRaw, "--id");
+    const summary = await getTagSummary(db, id);
+    if (!summary) {
+      throw new Error(`Tag ${id} not found`);
+    }
+
+    return Bun.JSON5.stringify(summary, null, 2) ?? "";
   }
 
   throw new Error(`Unknown tag subcommand: ${subcommand}`);
