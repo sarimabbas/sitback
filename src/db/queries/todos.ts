@@ -1,12 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/libsql";
-import { tagsTable, todoDependenciesTable, todosTable } from "./schema";
-
-type DbClient = ReturnType<typeof drizzle>;
-type TodoInsert = typeof todosTable.$inferInsert;
-type TodoUpdate = Partial<Pick<TodoInsert, "description" | "status" | "tagId">>;
-type TagInsert = typeof tagsTable.$inferInsert;
-type TagUpdate = Partial<Pick<TagInsert, "name" | "parentId">>;
+import { todoDependenciesTable, todosTable } from "../schema";
+import type { DbClient, TodoInsert, TodoUpdate } from "./types";
 
 async function queryTodoBlocked(db: DbClient, todoId: number): Promise<boolean> {
   const [row] = await db
@@ -62,34 +56,6 @@ export async function deleteTodo(db: DbClient, id: number) {
   return deleted;
 }
 
-export async function createTag(db: DbClient, tag: TagInsert) {
-  const [created] = await db.insert(tagsTable).values(tag).returning();
-
-  return created;
-}
-
-export async function getTagById(db: DbClient, id: number) {
-  const [row] = await db.select().from(tagsTable).where(eq(tagsTable.id, id));
-
-  return row;
-}
-
-export async function getTags(db: DbClient) {
-  return db.select().from(tagsTable);
-}
-
-export async function updateTag(db: DbClient, id: number, changes: TagUpdate) {
-  const [updated] = await db.update(tagsTable).set(changes).where(eq(tagsTable.id, id)).returning();
-
-  return updated;
-}
-
-export async function deleteTag(db: DbClient, id: number) {
-  const [deleted] = await db.delete(tagsTable).where(eq(tagsTable.id, id)).returning();
-
-  return deleted;
-}
-
 export async function getReadyTodos(db: DbClient) {
   return db
     .select()
@@ -106,8 +72,4 @@ export async function getReadyTodos(db: DbClient) {
         )`
       )
     );
-}
-
-export async function addDependency(db: DbClient, successorId: number, predecessorId: number) {
-  await db.insert(todoDependenciesTable).values({ successorId, predecessorId }).execute();
 }

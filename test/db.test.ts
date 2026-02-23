@@ -12,6 +12,7 @@ import {
   createTag,
   deleteTodo,
   deleteTag,
+  getExportTree,
   getReadyTodos,
   getTagById,
   getTags,
@@ -177,6 +178,39 @@ describe("db schema", () => {
 
     expect(await getTagById(db, parent.id)).toBeUndefined();
     expect(await getTagById(db, child.id)).toBeUndefined();
+  });
+
+  test("exports tag and todo trees with blocked status", async () => {
+    const parentTag = requireValue(
+      await createTag(db, { name: "work" }),
+      "Expected parent tag row"
+    );
+    const childTag = requireValue(
+      await createTag(db, { name: "backend", parentId: parentTag.id }),
+      "Expected child tag row"
+    );
+
+    const mapTodo = requireValue(
+      await createTodo(db, { description: "map", status: "in_progress", tagId: childTag.id }),
+      "Expected map todo row"
+    );
+    const reduceTodo = requireValue(
+      await createTodo(db, { description: "reduce", status: "todo", tagId: childTag.id }),
+      "Expected reduce todo row"
+    );
+
+    await addDependency(db, reduceTodo.id, mapTodo.id);
+
+    const exported = await getExportTree(db);
+
+    expect(exported.tagTree).toHaveLength(1);
+    expect(exported.tagTree[0]?.name).toBe("work");
+    expect(exported.tagTree[0]?.children[0]?.name).toBe("backend");
+
+    const mapNode = exported.todoTree.find((todo) => todo.id === mapTodo.id);
+    const reduceNode = mapNode?.children.find((todo) => todo.id === reduceTodo.id);
+
+    expect(reduceNode?.isBlocked).toBe(true);
   });
 
   test("rejects non-lowercase tag names", async () => {
