@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
+import { applySqlitePragmas } from "@/db/pragmas";
 import { addDependency, getReadyTodos } from "@/db/queries";
 import { tagsTable, todoDependenciesTable, todosTable } from "@/db/schema";
 
@@ -26,6 +27,7 @@ beforeEach(async () => {
   const dbFilePath = join(tempDir, "test.db");
 
   db = drizzle({ connection: { url: `file:${dbFilePath}` } });
+  await applySqlitePragmas(db);
 
   await migrate(db, {
     migrationsFolder: join(import.meta.dir, "..", "drizzle")

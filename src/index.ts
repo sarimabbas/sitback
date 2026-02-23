@@ -1,7 +1,7 @@
 import { parseArgs } from "util";
-import { db } from "./db";
+import { initializeSqlitePragmas } from "./db";
 
-void db;
+await initializeSqlitePragmas();
 
 const VERSION = "0.1.0";
 
