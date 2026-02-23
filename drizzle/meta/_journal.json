@@ -85,6 +85,13 @@
       "when": 1771823472807,
       "tag": "0011_fancy_enchantress",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1771825579679,
+      "tag": "0012_adorable_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

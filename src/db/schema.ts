@@ -57,7 +57,7 @@ export const todosTable = sqliteTable(
       name: "todos_tag_fk",
       columns: [table.tagId],
       foreignColumns: [tagsTable.id]
-    }),
+    }).onDelete("set null"),
     check(
       "todos_status_check",
       sql`${table.status} in ('todo', 'in_progress', 'completed')`

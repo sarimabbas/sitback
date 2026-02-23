@@ -5,9 +5,8 @@ flowchart TD
   subgraph CLI[src/index.ts]
     CInit[initializeDatabase]
     CHelp[printHelp]
-    CAddCmd[dispatch add]
-    CDeleteCmd[dispatch delete]
-    CGetCmd[dispatch get]
+    CTodoCmd[dispatch todo subcommands]
+    CTagCmd[dispatch tag]
     CExportCmd[dispatch export]
   end
 
@@ -15,6 +14,7 @@ flowchart TD
     CmdAdd[runAddCommand]
     CmdDelete[runDeleteCommand]
     CmdGet[runGetCommand]
+    CmdTag[runTagCommand]
     CmdExport[runExportCommand]
     CmdShared[parsePositiveInteger / parseIdsList / parseDateString / parsePriority / parseBooleanString]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
@@ -76,7 +76,7 @@ flowchart TD
   end
 
   Migrations[drizzle/*.sql\nDDL + constraints + triggers]
-  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts\nintegration tests]
+  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
 
   CInit --> DInit
   DInit --> DEnsure
@@ -84,18 +84,23 @@ flowchart TD
   DInit --> DRunMig
   DRunMig --> Migrations
 
-  CAddCmd --> CmdAdd
-  CDeleteCmd --> CmdDelete
-  CGetCmd --> CmdGet
+  CTodoCmd --> CmdAdd
+  CTodoCmd --> CmdDelete
+  CTodoCmd --> CmdGet
+  CTagCmd --> CmdTag
   CExportCmd --> CmdExport
 
   CmdAdd --> CmdShared
   CmdDelete --> CmdShared
   CmdGet --> CmdShared
+  CmdTag --> CmdShared
   CmdExport --> CmdMarkdown
 
   CmdAdd --> QTAdd
   CmdDelete --> QTDelete
+  CmdTag --> QGPath
+  CmdTag --> QGUpdate
+  CmdTag --> QGDelete
   QTAdd --> QTCreate
   QTAdd --> QTGetById
   QTAdd --> QDAdd

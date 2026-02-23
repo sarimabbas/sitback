@@ -13,10 +13,11 @@ afterEach(() => {
 
 describe("cli get", () => {
   test("returns best next actionable todo by default", () => {
-    runCli(["add", "--description", "map", "--status", "in_progress"], configDir);
-    runCli(["add", "--description", "reduce", "--status", "todo", "--predecessors", "1"], configDir);
+    runCli(["todo", "add", "--description", "map", "--status", "in_progress"], configDir);
+    runCli(["todo", "add", "--description", "reduce", "--status", "todo", "--predecessors", "1"], configDir);
     runCli(
       [
+        "todo",
         "add",
         "--description",
         "ready",
@@ -30,7 +31,7 @@ describe("cli get", () => {
       configDir
     );
 
-    const result = runCli(["get"], configDir);
+    const result = runCli(["todo", "get"], configDir);
 
     expect(result.exitCode).toBe(0);
     const todos = Bun.JSON5.parse(result.stdout) as Array<Record<string, unknown>>;
@@ -40,10 +41,10 @@ describe("cli get", () => {
   });
 
   test("returns ids and warns when combined with --num", () => {
-    runCli(["add", "--description", "first", "--status", "todo"], configDir);
-    runCli(["add", "--description", "second", "--status", "todo"], configDir);
+    runCli(["todo", "add", "--description", "first", "--status", "todo"], configDir);
+    runCli(["todo", "add", "--description", "second", "--status", "todo"], configDir);
 
-    const result = runCli(["get", "--ids", "2,1", "--num", "1"], configDir);
+    const result = runCli(["todo", "get", "--ids", "2,1", "--num", "1"], configDir);
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("Warning: --num is ignored when --ids is provided");
@@ -54,9 +55,10 @@ describe("cli get", () => {
   });
 
   test("applies blocked and min-priority filters", () => {
-    runCli(["add", "--description", "blocker", "--status", "in_progress"], configDir);
+    runCli(["todo", "add", "--description", "blocker", "--status", "in_progress"], configDir);
     runCli(
       [
+        "todo",
         "add",
         "--description",
         "blocked",
@@ -73,6 +75,7 @@ describe("cli get", () => {
     );
     runCli(
       [
+        "todo",
         "add",
         "--description",
         "ready-low",
@@ -86,8 +89,8 @@ describe("cli get", () => {
       configDir
     );
 
-    const blockedOnly = runCli(["get", "--blocked", "true"], configDir);
-    const highPriority = runCli(["get", "--min-priority", "4", "--num", "5"], configDir);
+    const blockedOnly = runCli(["todo", "get", "--blocked", "true"], configDir);
+    const highPriority = runCli(["todo", "get", "--min-priority", "4", "--num", "5"], configDir);
 
     expect(blockedOnly.exitCode).toBe(0);
     const blockedTodos = Bun.JSON5.parse(blockedOnly.stdout) as Array<Record<string, unknown>>;

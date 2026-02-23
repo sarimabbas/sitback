@@ -17,7 +17,7 @@ describe("cli add", () => {
     const configDir = createTempConfigDir("sitback-cli-add-");
     tempDirs.push(configDir);
 
-    const result = runCli(["add", "--status", "todo"], configDir);
+    const result = runCli(["todo", "add", "--status", "todo"], configDir);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Missing required --description option");
@@ -29,6 +29,7 @@ describe("cli add", () => {
 
     const result = runCli(
       [
+        "todo",
         "add",
         "--description",
         "compile report",

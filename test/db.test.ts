@@ -405,11 +405,22 @@ describe("db schema", () => {
       await createTag(db, { name: "child", parentId: parent.id }),
       "Expected child tag row"
     );
+    const taggedTodo = requireValue(
+      await createTodo(db, {
+        description: "tagged",
+        status: "todo",
+        tagId: child.id
+      }),
+      "Expected tagged todo row"
+    );
 
     await deleteTag(db, parent.id);
 
     expect(await getTagById(db, parent.id)).toBeUndefined();
     expect(await getTagById(db, child.id)).toBeUndefined();
+
+    const fetchedTodo = requireValue(await getTodoById(db, taggedTodo.id), "Expected tagged todo row");
+    expect(fetchedTodo.tagId).toBeNull();
   });
 
   test("exports tag and todo trees with blocked status", async () => {
