@@ -8,15 +8,18 @@ import { migrate } from "drizzle-orm/libsql/migrator";
 import { applySqlitePragmas } from "@/db/pragmas";
 import {
   addDependency,
+  addTodo,
   createTodo,
   createTag,
   deleteTodo,
   deleteTag,
   getExportTree,
+  getNextTodos,
   getReadyTodos,
   getTagById,
   getTags,
   getTodoById,
+  getTodosByIds,
   getTodos,
   updateTag,
   updateTodo
@@ -127,6 +130,95 @@ describe("db schema", () => {
     const reducerAfter = allTodos.find((todo) => todo.id === reducer.id);
 
     expect(reducerAfter?.isBlocked).toBe(false);
+  });
+
+  test("getTodosByIds returns requested todos in ID order", async () => {
+    const todoA = requireValue(
+      await createTodo(db, { description: "a", status: "todo" }),
+      "Expected todo A"
+    );
+    const todoB = requireValue(
+      await createTodo(db, { description: "b", status: "completed" }),
+      "Expected todo B"
+    );
+
+    const todos = await getTodosByIds(db, [todoB.id, todoA.id, todoA.id]);
+
+    expect(todos).toHaveLength(2);
+    expect(todos[0]?.id).toBe(todoB.id);
+    expect(todos[1]?.id).toBe(todoA.id);
+  });
+
+  test("getNextTodos returns unblocked todo items with default scheduling behavior", async () => {
+    const predecessor = requireValue(
+      await createTodo(db, { description: "map", status: "in_progress" }),
+      "Expected predecessor"
+    );
+    const blocked = requireValue(
+      await createTodo(db, { description: "reduce", status: "todo" }),
+      "Expected blocked todo"
+    );
+    const readyA = requireValue(
+      await createTodo(db, { description: "ready-a", status: "todo" }),
+      "Expected ready A"
+    );
+    const readyB = requireValue(
+      await createTodo(db, { description: "ready-b", status: "todo" }),
+      "Expected ready B"
+    );
+
+    await addDependency(db, blocked.id, predecessor.id);
+
+    const nextOne = await getNextTodos(db, 1);
+
+    expect(nextOne).toHaveLength(1);
+    expect(nextOne[0]?.id).toBe(readyA.id);
+    expect(nextOne[0]?.isBlocked).toBe(false);
+
+    const nextTwo = await getNextTodos(db, 2);
+    expect(nextTwo).toHaveLength(2);
+    expect(nextTwo[0]?.id).toBe(readyA.id);
+    expect(nextTwo[1]?.id).toBe(readyB.id);
+  });
+
+  test("addTodo upserts tag path and attaches predecessors", async () => {
+    const predecessorA = requireValue(
+      await createTodo(db, { description: "map-a", status: "completed" }),
+      "Expected predecessor A"
+    );
+    const predecessorB = requireValue(
+      await createTodo(db, { description: "map-b", status: "in_progress" }),
+      "Expected predecessor B"
+    );
+
+    const added = requireValue(
+      await addTodo(db, {
+        description: "reduce",
+        status: "todo",
+        tagPath: "work/backend",
+        predecessorIds: [predecessorA.id, predecessorB.id]
+      }),
+      "Expected added todo"
+    );
+
+    expect(added.description).toBe("reduce");
+    expect(added.status).toBe("todo");
+    expect(added.isBlocked).toBe(true);
+    expect(added.tagId).toBeDefined();
+
+    const tags = await getTags(db);
+    const work = tags.find((tag) => tag.name === "work" && tag.parentId === null);
+    const backend = tags.find((tag) => tag.name === "backend");
+
+    expect(work).toBeDefined();
+    expect(backend?.parentId).toBe(work?.id);
+
+    const dependencies = await db
+      .select()
+      .from(todoDependenciesTable)
+      .where(eq(todoDependenciesTable.successorId, added.id));
+
+    expect(dependencies).toHaveLength(2);
   });
 
   test("rejects duplicate root tag names", async () => {

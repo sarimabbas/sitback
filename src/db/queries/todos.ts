@@ -1,6 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { todoDependenciesTable, todosTable } from "../schema";
 import type { DbClient, TodoInsert, TodoUpdate } from "./types";
+import { addDependency } from "./dependencies";
+import { ensureTagPath } from "./tags";
 
 async function queryTodoBlocked(db: DbClient, todoId: number): Promise<boolean> {
   const [row] = await db
@@ -72,4 +74,52 @@ export async function getReadyTodos(db: DbClient) {
         )`
       )
     );
+}
+
+export async function getTodosByIds(db: DbClient, ids: number[]) {
+  const uniqueIds = Array.from(new Set(ids));
+
+  const todos = await Promise.all(uniqueIds.map((id) => getTodoById(db, id)));
+
+  return todos.filter((todo): todo is NonNullable<typeof todo> => todo !== undefined);
+}
+
+export async function getNextTodos(db: DbClient, limit: number) {
+  const ready = await getReadyTodos(db);
+  const sorted = [...ready].sort((a, b) => a.id - b.id).slice(0, limit);
+
+  return sorted.map((todo) => ({
+    ...todo,
+    isBlocked: false
+  }));
+}
+
+export async function addTodo(
+  db: DbClient,
+  input: {
+    description: string;
+    status?: "todo" | "in_progress" | "completed";
+    tagPath?: string;
+    predecessorIds?: number[];
+  }
+) {
+  const resolvedTag = input.tagPath ? await ensureTagPath(db, input.tagPath) : undefined;
+
+  const created = await createTodo(db, {
+    description: input.description,
+    status: input.status ?? "todo",
+    tagId: resolvedTag?.id
+  });
+
+  if (!created) {
+    return undefined;
+  }
+
+  const predecessorIds = Array.from(new Set(input.predecessorIds ?? []));
+
+  for (const predecessorId of predecessorIds) {
+    await addDependency(db, created.id, predecessorId);
+  }
+
+  return getTodoById(db, created.id);
 }
