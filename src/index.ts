@@ -1,6 +1,7 @@
 import { parseArgs } from "util";
 import { db, initializeDatabase } from "./db";
 import { runAddCommand } from "./commands/add";
+import { runDeleteCommand } from "./commands/delete";
 import { runExportCommand } from "./commands/export";
 import { runGetCommand } from "./commands/get";
 
@@ -14,6 +15,7 @@ function printHelp(): void {
 Usage:
   sb help
   sb add --description <text> [--tag path/to/tag] [--status todo|in_progress|completed] [--predecessors 1,2] [--priority 1-5] [--due-date YYYY-MM-DD]
+  sb delete --ids 1,2
   sb get [--ids 1,2] [--num 3] [--blocked true|false] [--min-priority 3] [--due-before YYYY-MM-DD] [--due-after YYYY-MM-DD]
   sb export [--format json5|markdown]
   sb --help
@@ -22,6 +24,7 @@ Usage:
 Commands:
   help      Show this help output
   add       Add a todo
+  delete    Delete one or more todos by ID
   get       Get todos; defaults to best next actionable todo
   export    Export tag and todo trees
 
@@ -32,6 +35,7 @@ Examples:
   sb help
   sb add --description "map results" --tag "work/backend" --status todo
   sb add --description "summarize run" --input-artifacts "logs/run-42.txt" --output-artifacts "reports/summary.md"
+  sb delete --ids 3,5,8
   sb add --description "reduce results" --predecessors 1,2
   sb get
   # no options -> best next actionable todo (unblocked + status=todo, limit 1)
@@ -103,6 +107,20 @@ if (command === "add") {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown add command error";
     console.error(`Add failed: ${message}`);
+    process.exit(1);
+  }
+}
+
+if (command === "delete") {
+  try {
+    const output = await runDeleteCommand(db, {
+      ids: values.ids
+    });
+    console.log(output);
+    process.exit(0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown delete command error";
+    console.error(`Delete failed: ${message}`);
     process.exit(1);
   }
 }

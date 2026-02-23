@@ -6,12 +6,14 @@ flowchart TD
     CInit[initializeDatabase]
     CHelp[printHelp]
     CAddCmd[dispatch add]
+    CDeleteCmd[dispatch delete]
     CGetCmd[dispatch get]
     CExportCmd[dispatch export]
   end
 
   subgraph Commands[src/commands/*]
     CmdAdd[runAddCommand]
+    CmdDelete[runDeleteCommand]
     CmdGet[runGetCommand]
     CmdExport[runExportCommand]
     CmdShared[parsePositiveInteger / parseIdsList / parseDateString / parsePriority / parseBooleanString]
@@ -74,7 +76,7 @@ flowchart TD
   end
 
   Migrations[drizzle/*.sql\nDDL + constraints + triggers]
-  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/get.test.ts\nintegration tests]
+  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts\nintegration tests]
 
   CInit --> DInit
   DInit --> DEnsure
@@ -83,14 +85,17 @@ flowchart TD
   DRunMig --> Migrations
 
   CAddCmd --> CmdAdd
+  CDeleteCmd --> CmdDelete
   CGetCmd --> CmdGet
   CExportCmd --> CmdExport
 
   CmdAdd --> CmdShared
+  CmdDelete --> CmdShared
   CmdGet --> CmdShared
   CmdExport --> CmdMarkdown
 
   CmdAdd --> QTAdd
+  CmdDelete --> QTDelete
   QTAdd --> QTCreate
   QTAdd --> QTGetById
   QTAdd --> QDAdd
