@@ -6,7 +6,20 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { applySqlitePragmas } from "@/db/pragmas";
-import { addDependency, getReadyTodos } from "@/db/queries";
+import {
+  addDependency,
+  createTodo,
+  createTag,
+  deleteTodo,
+  deleteTag,
+  getReadyTodos,
+  getTagById,
+  getTags,
+  getTodoById,
+  getTodos,
+  updateTag,
+  updateTodo
+} from "@/db/queries";
 import { tagsTable, todoDependenciesTable, todosTable } from "@/db/schema";
 
 type TestDb = ReturnType<typeof drizzle>;
@@ -59,6 +72,62 @@ describe("db schema", () => {
     expect(rows[0]?.tagId).toBe(tag.id);
   });
 
+  test("supports todo CRUD query helpers", async () => {
+    const created = await createTodo(db, {
+      description: "ship-crud",
+      status: "todo"
+    });
+    const createdTodo = requireValue(created, "Expected created todo row");
+
+    const updated = await updateTodo(db, createdTodo.id, {
+      description: "ship-crud-v2",
+      status: "in_progress"
+    });
+    const updatedTodo = requireValue(updated, "Expected updated todo row");
+
+    expect(updatedTodo.description).toBe("ship-crud-v2");
+    expect(updatedTodo.status).toBe("in_progress");
+
+    const fetched = await getTodoById(db, createdTodo.id);
+    const fetchedTodo = requireValue(fetched, "Expected fetched todo row");
+
+    expect(fetchedTodo.id).toBe(createdTodo.id);
+
+    const deleted = await deleteTodo(db, createdTodo.id);
+    const deletedTodo = requireValue(deleted, "Expected deleted todo row");
+
+    expect(deletedTodo.id).toBe(createdTodo.id);
+    expect(await getTodoById(db, createdTodo.id)).toBeUndefined();
+  });
+
+  test("returns blocked state for todos", async () => {
+    const mapA = requireValue(
+      await createTodo(db, { description: "map-a", status: "completed" }),
+      "Expected map-a todo row"
+    );
+    const mapB = requireValue(
+      await createTodo(db, { description: "map-b", status: "todo" }),
+      "Expected map-b todo row"
+    );
+    const reducer = requireValue(
+      await createTodo(db, { description: "reduce", status: "todo" }),
+      "Expected reducer todo row"
+    );
+
+    await addDependency(db, reducer.id, mapA.id);
+    await addDependency(db, reducer.id, mapB.id);
+
+    const before = requireValue(await getTodoById(db, reducer.id), "Expected reducer todo row");
+    expect(before.isBlocked).toBe(true);
+
+    await updateTodo(db, mapB.id, { status: "completed" });
+
+    const allTodos = await getTodos(db);
+    const reducerAfter = allTodos.find((todo) => todo.id === reducer.id);
+
+    expect(reducerAfter?.isBlocked).toBe(false);
+  });
+
   test("rejects duplicate root tag names", async () => {
     await db.insert(tagsTable).values({ name: "foo" });
 
@@ -71,6 +140,43 @@ describe("db schema", () => {
     }
 
     expect(failed).toBe(true);
+  });
+
+  test("supports tag CRUD query helpers", async () => {
+    const created = await createTag(db, { name: "alpha" });
+    const createdTag = requireValue(created, "Expected created tag row");
+
+    const updated = await updateTag(db, createdTag.id, { name: "alphav2" });
+    const updatedTag = requireValue(updated, "Expected updated tag row");
+
+    expect(updatedTag.name).toBe("alphav2");
+
+    const fetched = await getTagById(db, createdTag.id);
+    const fetchedTag = requireValue(fetched, "Expected fetched tag row");
+
+    expect(fetchedTag.id).toBe(createdTag.id);
+
+    const tags = await getTags(db);
+    expect(tags.some((tag) => tag.id === createdTag.id)).toBe(true);
+
+    const deleted = await deleteTag(db, createdTag.id);
+    const deletedTag = requireValue(deleted, "Expected deleted tag row");
+
+    expect(deletedTag.id).toBe(createdTag.id);
+    expect(await getTagById(db, createdTag.id)).toBeUndefined();
+  });
+
+  test("deleting a parent tag cascades and deletes children", async () => {
+    const parent = requireValue(await createTag(db, { name: "parent" }), "Expected parent tag row");
+    const child = requireValue(
+      await createTag(db, { name: "child", parentId: parent.id }),
+      "Expected child tag row"
+    );
+
+    await deleteTag(db, parent.id);
+
+    expect(await getTagById(db, parent.id)).toBeUndefined();
+    expect(await getTagById(db, child.id)).toBeUndefined();
   });
 
   test("rejects non-lowercase tag names", async () => {
@@ -208,6 +314,80 @@ describe("db schema", () => {
     const reducerReadyAfter = readyAfter.some((todo) => todo.id === reducer.id);
 
     expect(reducerReadyAfter).toBe(true);
+  });
+
+  test("deleting a predecessor removes dependency relation", async () => {
+    const predecessor = requireValue(
+      await createTodo(db, { description: "map-a", status: "in_progress" }),
+      "Expected predecessor todo row"
+    );
+    const successor = requireValue(
+      await createTodo(db, { description: "reduce", status: "todo" }),
+      "Expected successor todo row"
+    );
+
+    await addDependency(db, successor.id, predecessor.id);
+
+    const beforeDelete = requireValue(
+      await getTodoById(db, successor.id),
+      "Expected successor todo before delete"
+    );
+    expect(beforeDelete.isBlocked).toBe(true);
+
+    await deleteTodo(db, predecessor.id);
+
+    const dependencies = await db
+      .select()
+      .from(todoDependenciesTable)
+      .where(eq(todoDependenciesTable.successorId, successor.id));
+    expect(dependencies).toHaveLength(0);
+
+    const afterDelete = requireValue(
+      await getTodoById(db, successor.id),
+      "Expected successor todo after delete"
+    );
+    expect(afterDelete.isBlocked).toBe(false);
+  });
+
+  test("rejects completing a todo when any predecessor is not completed", async () => {
+    const predecessor = requireValue(
+      await createTodo(db, { description: "map-a", status: "in_progress" }),
+      "Expected predecessor todo row"
+    );
+    const successor = requireValue(
+      await createTodo(db, { description: "reduce", status: "todo" }),
+      "Expected successor todo row"
+    );
+
+    await addDependency(db, successor.id, predecessor.id);
+
+    let failed = false;
+
+    try {
+      await updateTodo(db, successor.id, { status: "completed" });
+    } catch {
+      failed = true;
+    }
+
+    expect(failed).toBe(true);
+  });
+
+  test("allows completing a todo after all predecessors are completed", async () => {
+    const predecessor = requireValue(
+      await createTodo(db, { description: "map-a", status: "completed" }),
+      "Expected predecessor todo row"
+    );
+    const successor = requireValue(
+      await createTodo(db, { description: "reduce", status: "todo" }),
+      "Expected successor todo row"
+    );
+
+    await addDependency(db, successor.id, predecessor.id);
+
+    const updated = await updateTodo(db, successor.id, { status: "completed" });
+    const updatedTodo = requireValue(updated, "Expected updated successor todo row");
+
+    expect(updatedTodo.status).toBe("completed");
   });
 
   test("rejects cyclic todo dependencies", async () => {

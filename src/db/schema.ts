@@ -33,7 +33,7 @@ export const tagsTable = sqliteTable(
       name: "tags_parent_fk",
       columns: [table.parentId],
       foreignColumns: [table.id]
-    })
+    }).onDelete("cascade")
   ]
 );
 
@@ -73,12 +73,12 @@ export const todoDependenciesTable = sqliteTable(
       name: "todo_dependencies_successor_fk",
       columns: [table.successorId],
       foreignColumns: [todosTable.id]
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "todo_dependencies_predecessor_fk",
       columns: [table.predecessorId],
       foreignColumns: [todosTable.id]
-    }),
+    }).onDelete("cascade"),
     check(
       "todo_dependencies_not_self_check",
       sql`${table.successorId} != ${table.predecessorId}`

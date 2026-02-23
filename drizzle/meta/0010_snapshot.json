@@ -1,0 +1,215 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "ce09ce35-0c32-43b6-94f6-9e9a7256c05d",
+  "prevId": "c5a4aff2-58c2-4033-934f-a48a5db25c96",
+  "tables": {
+    "tags": {
+      "name": "tags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tags_parent_name_unique": {
+          "name": "tags_parent_name_unique",
+          "columns": [
+            "parent_id",
+            "name"
+          ],
+          "isUnique": true
+        },
+        "tags_root_name_unique": {
+          "name": "tags_root_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true,
+          "where": "\"tags\".\"parent_id\" is null"
+        }
+      },
+      "foreignKeys": {
+        "tags_parent_fk": {
+          "name": "tags_parent_fk",
+          "tableFrom": "tags",
+          "tableTo": "tags",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tags_name_lowercase_check": {
+          "name": "tags_name_lowercase_check",
+          "value": "\"tags\".\"name\" = lower(\"tags\".\"name\")"
+        },
+        "tags_name_not_empty_check": {
+          "name": "tags_name_not_empty_check",
+          "value": "length(\"tags\".\"name\") > 0"
+        },
+        "tags_name_alphanumeric_check": {
+          "name": "tags_name_alphanumeric_check",
+          "value": "\"tags\".\"name\" not glob '*[^a-z0-9]*'"
+        }
+      }
+    },
+    "todo_dependencies": {
+      "name": "todo_dependencies",
+      "columns": {
+        "successor_id": {
+          "name": "successor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "predecessor_id": {
+          "name": "predecessor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "todo_dependencies_successor_fk": {
+          "name": "todo_dependencies_successor_fk",
+          "tableFrom": "todo_dependencies",
+          "tableTo": "todos",
+          "columnsFrom": [
+            "successor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "todo_dependencies_predecessor_fk": {
+          "name": "todo_dependencies_predecessor_fk",
+          "tableFrom": "todo_dependencies",
+          "tableTo": "todos",
+          "columnsFrom": [
+            "predecessor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "todo_dependencies_pk": {
+          "columns": [
+            "successor_id",
+            "predecessor_id"
+          ],
+          "name": "todo_dependencies_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "todo_dependencies_not_self_check": {
+          "name": "todo_dependencies_not_self_check",
+          "value": "\"todo_dependencies\".\"successor_id\" != \"todo_dependencies\".\"predecessor_id\""
+        }
+      }
+    },
+    "todos": {
+      "name": "todos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag_id": {
+          "name": "tag_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'todo'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "todos_tag_fk": {
+          "name": "todos_tag_fk",
+          "tableFrom": "todos",
+          "tableTo": "tags",
+          "columnsFrom": [
+            "tag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "todos_status_check": {
+          "name": "todos_status_check",
+          "value": "\"todos\".\"status\" in ('todo', 'in_progress', 'completed')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
