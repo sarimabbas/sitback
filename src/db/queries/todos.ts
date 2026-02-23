@@ -1,19 +1,80 @@
-import { and, eq, sql } from "drizzle-orm";
-import { todoDependenciesTable, todosTable } from "../schema";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { todosTable } from "../schema";
 import type { DbClient, TodoInsert, TodoUpdate } from "./types";
 import { addDependency } from "./dependencies";
 import { ensureTagPath } from "./tags";
 
-async function queryTodoBlocked(db: DbClient, todoId: number): Promise<boolean> {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(todoDependenciesTable)
-    .innerJoin(todosTable, eq(todosTable.id, todoDependenciesTable.predecessorId))
-    .where(
-      and(eq(todoDependenciesTable.successorId, todoId), sql`${todosTable.status} != 'completed'`)
-    );
+type SchedulableTodo = {
+  id: number;
+  dueDate: string | null;
+  priority: number | null;
+};
 
-  return (row?.count ?? 0) > 0;
+type TodoRowWithBlocked = {
+  id: number;
+  description: string;
+  tagId: number | null;
+  status: "todo" | "in_progress" | "completed";
+  inputArtifacts: string | null;
+  outputArtifacts: string | null;
+  workNotes: string | null;
+  priority: number | null;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isBlocked: number;
+};
+
+function compareTodosForScheduling(a: SchedulableTodo, b: SchedulableTodo): number {
+  const aDueDate = a.dueDate ?? "9999-12-31";
+  const bDueDate = b.dueDate ?? "9999-12-31";
+
+  if (aDueDate !== bDueDate) {
+    return aDueDate.localeCompare(bDueDate);
+  }
+
+  const aPriority = a.priority ?? 0;
+  const bPriority = b.priority ?? 0;
+
+  if (aPriority !== bPriority) {
+    return bPriority - aPriority;
+  }
+
+  return a.id - b.id;
+}
+
+function blockedExistsSql(todoIdExpr: unknown) {
+  return sql`exists (
+    select 1
+    from todo_dependencies d
+    join todos p on p.id = d.predecessor_id
+    where d.successor_id = ${todoIdExpr}
+      and p.status != 'completed'
+  )`;
+}
+
+function todosWithBlockedSelection() {
+  return {
+    id: todosTable.id,
+    description: todosTable.description,
+    tagId: todosTable.tagId,
+    status: todosTable.status,
+    inputArtifacts: todosTable.inputArtifacts,
+    outputArtifacts: todosTable.outputArtifacts,
+    workNotes: todosTable.workNotes,
+    priority: todosTable.priority,
+    dueDate: todosTable.dueDate,
+    createdAt: todosTable.createdAt,
+    updatedAt: todosTable.updatedAt,
+    isBlocked: sql<number>`case when ${blockedExistsSql(todosTable.id)} then 1 else 0 end`
+  };
+}
+
+function mapBlocked(row: TodoRowWithBlocked) {
+  return {
+    ...row,
+    isBlocked: row.isBlocked === 1
+  };
 }
 
 export async function createTodo(db: DbClient, todo: TodoInsert) {
@@ -23,27 +84,19 @@ export async function createTodo(db: DbClient, todo: TodoInsert) {
 }
 
 export async function getTodoById(db: DbClient, id: number) {
-  const [row] = await db.select().from(todosTable).where(eq(todosTable.id, id));
+  const [row] = await db.select(todosWithBlockedSelection()).from(todosTable).where(eq(todosTable.id, id));
 
   if (!row) {
     return undefined;
   }
 
-  return {
-    ...row,
-    isBlocked: await queryTodoBlocked(db, row.id)
-  };
+  return mapBlocked(row);
 }
 
 export async function getTodos(db: DbClient) {
-  const rows = await db.select().from(todosTable);
+  const rows = await db.select(todosWithBlockedSelection()).from(todosTable);
 
-  return Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      isBlocked: await queryTodoBlocked(db, row.id)
-    }))
-  );
+  return rows.map(mapBlocked);
 }
 
 export async function updateTodo(db: DbClient, id: number, changes: TodoUpdate) {
@@ -79,37 +132,25 @@ export async function getReadyTodos(db: DbClient) {
 export async function getTodosByIds(db: DbClient, ids: number[]) {
   const uniqueIds = Array.from(new Set(ids));
 
-  const todos = await Promise.all(uniqueIds.map((id) => getTodoById(db, id)));
+  if (uniqueIds.length === 0) {
+    return [];
+  }
 
-  return todos.filter((todo): todo is NonNullable<typeof todo> => todo !== undefined);
+  const rows = await db
+    .select(todosWithBlockedSelection())
+    .from(todosTable)
+    .where(inArray(todosTable.id, uniqueIds));
+
+  const rowsById = new Map(rows.map((row) => [row.id, mapBlocked(row)]));
+
+  return uniqueIds.map((id) => rowsById.get(id)).filter((todo): todo is NonNullable<typeof todo> => todo !== undefined);
 }
 
 export async function getNextTodos(db: DbClient, limit: number) {
-  const ready = await getReadyTodos(db);
-  const sorted = [...ready]
-    .sort((a, b) => {
-      const aDueDate = a.dueDate ?? "9999-12-31";
-      const bDueDate = b.dueDate ?? "9999-12-31";
-
-      if (aDueDate !== bDueDate) {
-        return aDueDate.localeCompare(bDueDate);
-      }
-
-      const aPriority = a.priority ?? 0;
-      const bPriority = b.priority ?? 0;
-
-      if (aPriority !== bPriority) {
-        return bPriority - aPriority;
-      }
-
-      return a.id - b.id;
-    })
-    .slice(0, limit);
-
-  return sorted.map((todo) => ({
-    ...todo,
-    isBlocked: false
-  }));
+  return getTodosForGet(db, {
+    limit,
+    actionableOnly: true
+  });
 }
 
 export async function getTodosForGet(
@@ -123,56 +164,42 @@ export async function getTodosForGet(
     dueAfter?: string;
   }
 ) {
-  const allTodos = await getTodos(db);
-
-  let filtered = allTodos;
+  const conditions = [] as ReturnType<typeof sql>[];
+  const blockedExpr = blockedExistsSql(todosTable.id);
 
   if (options.actionableOnly) {
-    filtered = filtered.filter((todo) => todo.status === "todo" && !todo.isBlocked);
+    conditions.push(eq(todosTable.status, "todo") as unknown as ReturnType<typeof sql>);
+    conditions.push(sql`not (${blockedExpr})`);
   }
 
   if (options.blocked !== undefined) {
-    filtered = filtered.filter((todo) => todo.isBlocked === options.blocked);
+    conditions.push(options.blocked ? blockedExpr : sql`not (${blockedExpr})`);
   }
 
   if (options.minPriority !== undefined) {
-    const minPriority = options.minPriority;
-    filtered = filtered.filter((todo) => (todo.priority ?? 0) >= minPriority);
+    conditions.push(sql`${todosTable.priority} is not null and ${todosTable.priority} >= ${options.minPriority}`);
   }
 
   if (options.dueBefore) {
-    const dueBefore = options.dueBefore;
-    filtered = filtered.filter(
-      (todo) => todo.dueDate !== null && todo.dueDate.localeCompare(dueBefore) <= 0
-    );
+    conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} <= ${options.dueBefore}`);
   }
 
   if (options.dueAfter) {
-    const dueAfter = options.dueAfter;
-    filtered = filtered.filter(
-      (todo) => todo.dueDate !== null && todo.dueDate.localeCompare(dueAfter) >= 0
-    );
+    conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} >= ${options.dueAfter}`);
   }
 
-  return filtered
-    .sort((a, b) => {
-      const aDueDate = a.dueDate ?? "9999-12-31";
-      const bDueDate = b.dueDate ?? "9999-12-31";
+  const rows = await db
+    .select(todosWithBlockedSelection())
+    .from(todosTable)
+    .where(conditions.length === 0 ? undefined : and(...conditions))
+    .orderBy(
+      sql`coalesce(${todosTable.dueDate}, '9999-12-31') asc`,
+      sql`coalesce(${todosTable.priority}, 0) desc`,
+      asc(todosTable.id)
+    )
+    .limit(options.limit);
 
-      if (aDueDate !== bDueDate) {
-        return aDueDate.localeCompare(bDueDate);
-      }
-
-      const aPriority = a.priority ?? 0;
-      const bPriority = b.priority ?? 0;
-
-      if (aPriority !== bPriority) {
-        return bPriority - aPriority;
-      }
-
-      return a.id - b.id;
-    })
-    .slice(0, options.limit);
+  return rows.map(mapBlocked).sort(compareTodosForScheduling);
 }
 
 export async function addTodo(

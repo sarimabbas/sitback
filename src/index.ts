@@ -1,6 +1,8 @@
 import { parseArgs } from "util";
-import { addTodo, db, getExportTree, getTodosByIds, getTodosForGet, initializeDatabase } from "./db";
-import type { ExportTagNode, ExportTodoNode } from "./db";
+import { db, initializeDatabase } from "./db";
+import { runAddCommand } from "./commands/add";
+import { runExportCommand } from "./commands/export";
+import { runGetCommand } from "./commands/get";
 
 await initializeDatabase();
 
@@ -41,45 +43,6 @@ Examples:
   sb export --format json5
   sb export --format markdown
   sb --help`);
-}
-
-function renderTagMarkdown(nodes: ExportTagNode[], depth = 0): string {
-  const prefix = "  ".repeat(depth);
-
-  return nodes
-    .map((node) => {
-      const line = `${prefix}- ${node.name} (#${node.id})`;
-      if (node.children.length === 0) {
-        return line;
-      }
-      return `${line}\n${renderTagMarkdown(node.children, depth + 1)}`;
-    })
-    .join("\n");
-}
-
-function renderTodoMarkdown(nodes: ExportTodoNode[], depth = 0): string {
-  const prefix = "  ".repeat(depth);
-
-  return nodes
-    .map((node) => {
-      const predecessors =
-        node.predecessorIds.length > 0 ? node.predecessorIds.map((id) => `#${id}`).join(",") : "none";
-      const line = `${prefix}- #${node.id} ${node.description} [status=${node.status}, blocked=${node.isBlocked}, tag=${node.tagId ?? "none"}, predecessors=${predecessors}]`;
-
-      if (node.children.length === 0) {
-        return line;
-      }
-
-      return `${line}\n${renderTodoMarkdown(node.children, depth + 1)}`;
-    })
-    .join("\n");
-}
-
-function toMarkdown(payload: { tagTree: ExportTagNode[]; todoTree: ExportTodoNode[] }): string {
-  const tags = payload.tagTree.length > 0 ? renderTagMarkdown(payload.tagTree) : "- (none)";
-  const todos = payload.todoTree.length > 0 ? renderTodoMarkdown(payload.todoTree) : "- (none)";
-
-  return `# sitback export\n\n## tag_tree\n${tags}\n\n## todo_tree\n${todos}`;
 }
 
 const args = Bun.argv.slice(2);
@@ -123,181 +86,56 @@ if (command === "help") {
 }
 
 if (command === "add") {
-  const description = values.description?.trim();
-
-  if (!description) {
-    console.error("Missing required --description option");
-    process.exit(1);
-  }
-
-  const status = values.status ?? "todo";
-  if (status !== "todo" && status !== "in_progress" && status !== "completed") {
-    console.error("Invalid --status. Use todo, in_progress, or completed");
-    process.exit(1);
-  }
-
-  let predecessorIds: number[] = [];
-  if (values.predecessors && values.predecessors.trim().length > 0) {
-    const parsedIds = values.predecessors.split(",").map((raw) => Number.parseInt(raw.trim(), 10));
-    if (parsedIds.some((id) => !Number.isInteger(id) || id <= 0)) {
-      console.error("Invalid --predecessors. Use a comma-separated list of positive integer IDs");
-      process.exit(1);
-    }
-    predecessorIds = parsedIds;
-  }
-
-  let priority: number | undefined;
-  if (values.priority && values.priority.trim().length > 0) {
-    const parsedPriority = Number.parseInt(values.priority, 10);
-    if (!Number.isInteger(parsedPriority) || parsedPriority < 1 || parsedPriority > 5) {
-      console.error("Invalid --priority. Use an integer from 1 to 5");
-      process.exit(1);
-    }
-    priority = parsedPriority;
-  }
-
-  const dueDate = values["due-date"]?.trim();
-  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
-    console.error("Invalid --due-date. Use YYYY-MM-DD");
-    process.exit(1);
-  }
-
   try {
-    const added = await addTodo(db, {
-      description,
-      tagPath: values.tag,
-      status,
-      predecessorIds,
-      inputArtifacts: values["input-artifacts"]?.trim() || undefined,
-      outputArtifacts: values["output-artifacts"]?.trim() || undefined,
-      workNotes: values["work-notes"]?.trim() || undefined,
-      priority,
-      dueDate
+    const output = await runAddCommand(db, {
+      description: values.description,
+      tag: values.tag,
+      status: values.status,
+      predecessors: values.predecessors,
+      inputArtifacts: values["input-artifacts"],
+      outputArtifacts: values["output-artifacts"],
+      workNotes: values["work-notes"],
+      priority: values.priority,
+      dueDate: values["due-date"]
     });
-
-    if (!added) {
-      console.error("Failed to create todo");
-      process.exit(1);
-    }
-
-    console.log(Bun.JSON5.stringify(added, null, 2));
+    console.log(output);
     process.exit(0);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown add error";
+    const message = error instanceof Error ? error.message : "Unknown add command error";
     console.error(`Add failed: ${message}`);
     process.exit(1);
   }
 }
 
 if (command === "get") {
-  const idsRaw = values.ids?.trim();
-  const numRaw = values.num?.trim();
-  const blockedRaw = values.blocked?.trim();
-  const minPriorityRaw = values["min-priority"]?.trim();
-  const dueBefore = values["due-before"]?.trim();
-  const dueAfter = values["due-after"]?.trim();
-
-  let blocked: boolean | undefined;
-  if (blockedRaw !== undefined) {
-    if (blockedRaw === "true") {
-      blocked = true;
-    } else if (blockedRaw === "false") {
-      blocked = false;
-    } else {
-      console.error("Invalid --blocked. Use true or false");
-      process.exit(1);
-    }
-  }
-
-  let minPriority: number | undefined;
-  if (minPriorityRaw) {
-    const parsedMinPriority = Number.parseInt(minPriorityRaw, 10);
-    if (!Number.isInteger(parsedMinPriority) || parsedMinPriority < 1 || parsedMinPriority > 5) {
-      console.error("Invalid --min-priority. Use an integer from 1 to 5");
-      process.exit(1);
-    }
-    minPriority = parsedMinPriority;
-  }
-
-  if (dueBefore && !/^\d{4}-\d{2}-\d{2}$/.test(dueBefore)) {
-    console.error("Invalid --due-before. Use YYYY-MM-DD");
-    process.exit(1);
-  }
-
-  if (dueAfter && !/^\d{4}-\d{2}-\d{2}$/.test(dueAfter)) {
-    console.error("Invalid --due-after. Use YYYY-MM-DD");
-    process.exit(1);
-  }
-
-  if (idsRaw && numRaw) {
-    console.error("Warning: --num is ignored when --ids is provided");
-  }
-
-  if (idsRaw && (blockedRaw !== undefined || minPriorityRaw || dueBefore || dueAfter)) {
-    console.error("Warning: --blocked/--min-priority/--due-before/--due-after are ignored when --ids is provided");
-  }
-
-  if (idsRaw) {
-    const parsedIds = idsRaw.split(",").map((raw) => Number.parseInt(raw.trim(), 10));
-    if (parsedIds.length === 0 || parsedIds.some((id) => !Number.isInteger(id) || id <= 0)) {
-      console.error("Invalid --ids. Use a comma-separated list of positive integer IDs");
-      process.exit(1);
-    }
-
-    try {
-      const todos = await getTodosByIds(db, parsedIds);
-      console.log(Bun.JSON5.stringify(todos, null, 2));
-      process.exit(0);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown get error";
-      console.error(`Get failed: ${message}`);
-      process.exit(1);
-    }
-  }
-
-  let limit = 1;
-  if (numRaw) {
-    const parsedLimit = Number.parseInt(numRaw, 10);
-    if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
-      console.error("Invalid --num. Use a positive integer");
-      process.exit(1);
-    }
-    limit = parsedLimit;
-  }
-
   try {
-    const todos = await getTodosForGet(db, {
-      limit,
-      actionableOnly: blocked === undefined,
-      blocked,
-      minPriority,
-      dueBefore,
-      dueAfter
+    const result = await runGetCommand(db, {
+      ids: values.ids,
+      num: values.num,
+      blocked: values.blocked,
+      minPriority: values["min-priority"],
+      dueBefore: values["due-before"],
+      dueAfter: values["due-after"]
     });
-    console.log(Bun.JSON5.stringify(todos, null, 2));
+    for (const warning of result.warnings) {
+      console.error(warning);
+    }
+    console.log(result.output);
     process.exit(0);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown get error";
+    const message = error instanceof Error ? error.message : "Unknown get command error";
     console.error(`Get failed: ${message}`);
     process.exit(1);
   }
 }
 
 if (command === "export") {
-  const format = values.format ?? "json5";
-
-  if (format !== "json5" && format !== "markdown") {
-    console.error("Unsupported format. Use --format json5 or --format markdown");
-    process.exit(1);
-  }
-
   try {
-    const payload = await getExportTree(db);
-    const output = format === "json5" ? Bun.JSON5.stringify(payload, null, 2) : toMarkdown(payload);
+    const output = await runExportCommand(db, { format: values.format });
     console.log(output);
     process.exit(0);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown export error";
+    const message = error instanceof Error ? error.message : "Unknown export command error";
     console.error(`Export failed: ${message}`);
     console.error("Run `bun run db:migrate` first to initialize the database schema.");
     process.exit(1);
