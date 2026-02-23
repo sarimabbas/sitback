@@ -10,6 +10,53 @@ type TagTreeNode = {
   children: TagTreeNode[];
 };
 
+function sortTagTree(node: TagTreeNode): void {
+  node.children.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  for (const child of node.children) {
+    sortTagTree(child);
+  }
+}
+
+function buildTagForest(rows: Array<{ id: number; name: string; parentId: number | null }>) {
+  const nodesById = new Map<number, TagTreeNode>(
+    rows.map((row) => [
+      row.id,
+      {
+        id: row.id,
+        name: row.name,
+        parentId: row.parentId,
+        children: []
+      }
+    ])
+  );
+
+  const roots: TagTreeNode[] = [];
+
+  for (const node of nodesById.values()) {
+    if (node.parentId === null) {
+      roots.push(node);
+      continue;
+    }
+
+    const parent = nodesById.get(node.parentId);
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  roots.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  for (const root of roots) {
+    sortTagTree(root);
+  }
+
+  return {
+    roots,
+    nodesById
+  };
+}
+
 export async function createTag(db: DbClient, tag: TagInsert) {
   const [created] = await db.insert(tagsTable).values(tag).returning();
 
@@ -142,42 +189,14 @@ export async function getTagSummary(db: DbClient, id: number) {
       select id from descendants
     )`);
 
-  const tagNodesById = new Map<number, TagTreeNode>(
-    descendantRows.map((row) => [
-      row.id,
-      {
-        id: row.id,
-        name: row.name,
-        parentId: row.parentId,
-        children: []
-      }
-    ])
-  );
+  const { nodesById } = buildTagForest(descendantRows);
 
-  for (const node of tagNodesById.values()) {
-    if (node.parentId === null || node.id === id) {
-      continue;
-    }
-
-    const parent = tagNodesById.get(node.parentId);
-    if (parent) {
-      parent.children.push(node);
-    }
-  }
-
-  const sortTree = (node: TagTreeNode) => {
-    node.children.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
-    for (const child of node.children) {
-      sortTree(child);
-    }
-  };
-
-  const tagTree = tagNodesById.get(id);
+  const tagTree = nodesById.get(id);
   if (!tagTree) {
     return undefined;
   }
 
-  sortTree(tagTree);
+  sortTagTree(tagTree);
 
   const [countRow] = await db
     .select({
@@ -198,6 +217,30 @@ export async function getTagSummary(db: DbClient, id: number) {
   return {
     tag,
     tagTree,
+    todoCount: countRow?.todoCount ?? 0
+  };
+}
+
+export async function getAllTagsSummary(db: DbClient) {
+  const allTags = await db
+    .select({
+      id: tagsTable.id,
+      name: tagsTable.name,
+      parentId: tagsTable.parentId
+    })
+    .from(tagsTable);
+
+  const { roots } = buildTagForest(allTags);
+
+  const [countRow] = await db
+    .select({
+      todoCount: sql<number>`count(*)`
+    })
+    .from(todosTable)
+    .where(sql`${todosTable.tagId} is not null`);
+
+  return {
+    tagTree: roots,
     todoCount: countRow?.todoCount ?? 0
   };
 }

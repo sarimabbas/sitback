@@ -1,4 +1,4 @@
-import { deleteTag, ensureTagPath, getTagById, getTagSummary, updateTag } from "@/db";
+import { deleteTag, ensureTagPath, getAllTagsSummary, getTagById, getTagSummary, updateTag } from "@/db";
 import type { DbClient } from "@/db";
 import { parsePositiveInteger } from "./shared";
 
@@ -87,8 +87,10 @@ export async function runTagCommand(
 
   if (subcommand === "get") {
     const idRaw = values.id?.trim();
+
     if (!idRaw) {
-      throw new Error("Missing required --id option");
+      const allSummary = await getAllTagsSummary(db);
+      return Bun.JSON5.stringify(allSummary, null, 2) ?? "";
     }
 
     const id = parsePositiveInteger(idRaw, "--id");

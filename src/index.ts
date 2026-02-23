@@ -21,7 +21,7 @@ Usage:
   sb todo delete --ids 1,2
   sb todo get [--ids 1,2] [--num 3] [--blocked true|false] [--min-priority 3] [--due-before YYYY-MM-DD] [--due-after YYYY-MM-DD] [--tag path/to/tag] [--tag-id 2]
   sb tag add --path parent/child
-  sb tag get --id 12
+  sb tag get [--id 12]
   sb tag update --id 12 --name newname
   sb tag delete --id 12
   sb export [--format json5|markdown]
@@ -53,6 +53,7 @@ Examples:
   sb todo get --tag work/backend
   sb todo get --tag-id 2
   sb tag add --path work/backend
+  sb tag get
   sb tag get --id 2
   sb tag update --id 2 --name services
   sb tag delete --id 2

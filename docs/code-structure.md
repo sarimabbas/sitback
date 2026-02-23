@@ -60,6 +60,7 @@ flowchart TD
     QGCreate[createTag]
     QGById[getTagById]
     QGAll[getTags]
+    QGAllSummary[getAllTagsSummary]
     QGResolve[resolveTagPath]
     QGSummary[getTagSummary]
     QGUpdate[updateTag]
@@ -110,6 +111,7 @@ flowchart TD
   CmdUpdate --> QGById
   CmdDelete --> QTDelete
   CmdTag --> QGPath
+  CmdTag --> QGAllSummary
   CmdTag --> QGSummary
   CmdTag --> QGUpdate
   CmdTag --> QGDelete

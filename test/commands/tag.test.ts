@@ -68,6 +68,25 @@ describe("cli tag", () => {
     expect(payload.todoCount).toBe(2);
   });
 
+  test("tag get without id returns full tag tree", () => {
+    runCli(["tag", "add", "--path", "root/child"], configDir);
+    runCli(["tag", "add", "--path", "ops/platform"], configDir);
+    runCli(["todo", "add", "--description", "tagged", "--tag", "root/child", "--status", "todo"], configDir);
+
+    const result = runCli(["tag", "get"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    const payload = Bun.JSON5.parse(result.stdout) as {
+      tagTree: Array<{ id: number; name: string; children: Array<unknown> }>;
+      todoCount: number;
+    };
+
+    expect(payload.tagTree.length).toBe(2);
+    expect(payload.tagTree.some((node) => node.name === "root")).toBe(true);
+    expect(payload.tagTree.some((node) => node.name === "ops")).toBe(true);
+    expect(payload.todoCount).toBe(1);
+  });
+
   test("tag delete cascades children and unlinks todos", () => {
     const parentAdd = runCli(["tag", "add", "--path", "engineering/backend"], configDir);
     const child = Bun.JSON5.parse(parentAdd.stdout) as Record<string, unknown>;
