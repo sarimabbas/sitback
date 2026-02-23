@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX `tags_parent_name_unique` ON `tags` (`parent_id`,`name`);

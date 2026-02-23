@@ -1,9 +1,148 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8fc3c3e4-3600-455b-8506-b5f5e7b7c7e9",
+  "id": "04a9dcdd-86a4-4362-a178-874b2c07fee0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "tags": {
+      "name": "tags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tags_parent_name_unique": {
+          "name": "tags_parent_name_unique",
+          "columns": [
+            "parent_id",
+            "name"
+          ],
+          "isUnique": true
+        },
+        "tags_root_name_unique": {
+          "name": "tags_root_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true,
+          "where": "\"tags\".\"parent_id\" is null"
+        }
+      },
+      "foreignKeys": {
+        "tags_parent_fk": {
+          "name": "tags_parent_fk",
+          "tableFrom": "tags",
+          "tableTo": "tags",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tags_name_lowercase_check": {
+          "name": "tags_name_lowercase_check",
+          "value": "\"tags\".\"name\" = lower(\"tags\".\"name\")"
+        },
+        "tags_name_not_empty_check": {
+          "name": "tags_name_not_empty_check",
+          "value": "length(\"tags\".\"name\") > 0"
+        },
+        "tags_name_alphanumeric_check": {
+          "name": "tags_name_alphanumeric_check",
+          "value": "\"tags\".\"name\" not glob '*[^a-z0-9]*'"
+        }
+      }
+    },
+    "todo_dependencies": {
+      "name": "todo_dependencies",
+      "columns": {
+        "successor_id": {
+          "name": "successor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "predecessor_id": {
+          "name": "predecessor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "todo_dependencies_successor_fk": {
+          "name": "todo_dependencies_successor_fk",
+          "tableFrom": "todo_dependencies",
+          "tableTo": "todos",
+          "columnsFrom": [
+            "successor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "todo_dependencies_predecessor_fk": {
+          "name": "todo_dependencies_predecessor_fk",
+          "tableFrom": "todo_dependencies",
+          "tableTo": "todos",
+          "columnsFrom": [
+            "predecessor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "todo_dependencies_pk": {
+          "columns": [
+            "successor_id",
+            "predecessor_id"
+          ],
+          "name": "todo_dependencies_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "todo_dependencies_not_self_check": {
+          "name": "todo_dependencies_not_self_check",
+          "value": "\"todo_dependencies\".\"successor_id\" != \"todo_dependencies\".\"predecessor_id\""
+        }
+      }
+    },
     "todos": {
       "name": "todos",
       "columns": {
@@ -21,8 +160,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "predecessor_id": {
-          "name": "predecessor_id",
+        "tag_id": {
+          "name": "tag_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
@@ -35,21 +174,72 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'todo'"
+        },
+        "input_artifacts": {
+          "name": "input_artifacts",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "output_artifacts": {
+          "name": "output_artifacts",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "work_notes": {
+          "name": "work_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "todos_predecessor_fk": {
-          "name": "todos_predecessor_fk",
+        "todos_tag_fk": {
+          "name": "todos_tag_fk",
           "tableFrom": "todos",
-          "tableTo": "todos",
+          "tableTo": "tags",
           "columnsFrom": [
-            "predecessor_id"
+            "tag_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -59,6 +249,10 @@
         "todos_status_check": {
           "name": "todos_status_check",
           "value": "\"todos\".\"status\" in ('todo', 'in_progress', 'completed')"
+        },
+        "todos_priority_range_check": {
+          "name": "todos_priority_range_check",
+          "value": "\"todos\".\"priority\" is null or (\"todos\".\"priority\" between 1 and 5)"
         }
       }
     }

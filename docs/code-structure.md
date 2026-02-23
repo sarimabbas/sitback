@@ -28,6 +28,13 @@ flowchart TD
     DRunMig[migrate with drizzle folder]
   end
 
+  subgraph DevScripts[scripts/db-squash.ts]
+    SSql[removeFilesInDirectory]
+    SGen[drizzle-kit generate]
+    SAppend[appendCustomMigrationSql]
+    SMigrate[drizzle-kit migrate]
+  end
+
   subgraph Schema[src/db/schema.ts]
     STags[tagsTable]
     STodos[todosTable]
@@ -89,6 +96,11 @@ flowchart TD
   DInit --> DPragma
   DInit --> DRunMig
   DRunMig --> Migrations
+
+  SSql --> SGen
+  SGen --> SAppend
+  SAppend --> SMigrate
+  SAppend --> Migrations
 
   CTodoCmd --> CmdAdd
   CTodoCmd --> CmdUpdate

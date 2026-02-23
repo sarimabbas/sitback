@@ -1,1 +1,1 @@
-export { configDir, dbFilePath, ensureConfigDir } from "./paths";
+export { configDir, dbDir, dbFilePath, ensureConfigDir } from "./paths";

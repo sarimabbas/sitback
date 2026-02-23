@@ -22,7 +22,11 @@
 - Recreate triggers when a migration rebuilds, drops, or renames a table they depend on.
 - Risk pattern: SQLite rebuild migrations using `__new_*` table, copy, drop old, rename new.
 - For rebuild migrations, drop affected triggers before table swap and recreate them after rename.
-- Keep trigger logic in custom SQL migrations when needed.
+- Canonical trigger/custom SQL lives in `src/db/custom-migrations.sql`.
+- Preserve trigger/custom migration logic by copying the relevant SQL blocks from `src/db/custom-migrations.sql` into each custom Drizzle migration that touches affected tables.
+- Use `bun run db:squash` only when the developer explicitly asks for it during local development setup and you intentionally want to reset migration history to a new baseline.
+- `db:squash` rewrites migration history, generates a fresh baseline migration, appends `src/db/custom-migrations.sql` into that new migration, and runs migrate.
+- Do **not** use `db:squash` on shared/staging/production databases or after migrations are already distributed to other environments.
 - After migration edits, run:
   - `bun run lint`
   - `bun run test`

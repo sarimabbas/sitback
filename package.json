@@ -21,6 +21,7 @@
     "db:generate": "bunx drizzle-kit generate",
     "db:generate:custom": "bunx drizzle-kit generate --custom",
     "db:migrate": "bunx drizzle-kit migrate",
+    "db:squash": "bun run scripts/db-squash.ts",
     "db:studio": "bunx drizzle-kit studio"
   },
   "bin": {

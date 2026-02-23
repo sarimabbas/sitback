@@ -91,6 +91,9 @@ bun run db:push
 bun run db:generate
 bun run db:migrate
 
+# local-dev only: reset/squash migration history to a fresh baseline
+bun run db:squash
+
 # inspect DB with Drizzle Studio
 bun run db:studio
 ```
