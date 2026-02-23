@@ -21,6 +21,7 @@ import {
   getTodoById,
   getTodosByIds,
   getTodos,
+  getTodosForGet,
   updateTag,
   updateTodo
 } from "@/db/queries";
@@ -79,29 +80,64 @@ describe("db schema", () => {
   test("supports todo CRUD query helpers", async () => {
     const created = await createTodo(db, {
       description: "ship-crud",
-      status: "todo"
+      status: "todo",
+      inputArtifacts: "README.md",
+      outputArtifacts: "dist/sb",
+      workNotes: "Initial draft",
+      priority: 3,
+      dueDate: "2030-01-01"
     });
     const createdTodo = requireValue(created, "Expected created todo row");
+    expect(createdTodo.createdAt.length).toBeGreaterThan(0);
+    expect(createdTodo.updatedAt.length).toBeGreaterThan(0);
 
     const updated = await updateTodo(db, createdTodo.id, {
       description: "ship-crud-v2",
-      status: "in_progress"
+      status: "in_progress",
+      workNotes: "Updated notes",
+      priority: 4
     });
     const updatedTodo = requireValue(updated, "Expected updated todo row");
 
     expect(updatedTodo.description).toBe("ship-crud-v2");
     expect(updatedTodo.status).toBe("in_progress");
+    expect(updatedTodo.workNotes).toBe("Updated notes");
+    expect(updatedTodo.priority).toBe(4);
 
     const fetched = await getTodoById(db, createdTodo.id);
     const fetchedTodo = requireValue(fetched, "Expected fetched todo row");
 
     expect(fetchedTodo.id).toBe(createdTodo.id);
+    expect(fetchedTodo.inputArtifacts).toBe("README.md");
+    expect(fetchedTodo.outputArtifacts).toBe("dist/sb");
+    expect(fetchedTodo.dueDate).toBe("2030-01-01");
+
+    await Bun.sleep(1100);
+    await updateTodo(db, createdTodo.id, { workNotes: "Touched" });
+    const touchedTodo = requireValue(await getTodoById(db, createdTodo.id), "Expected touched todo row");
+    expect(touchedTodo.updatedAt >= createdTodo.updatedAt).toBe(true);
 
     const deleted = await deleteTodo(db, createdTodo.id);
     const deletedTodo = requireValue(deleted, "Expected deleted todo row");
 
     expect(deletedTodo.id).toBe(createdTodo.id);
     expect(await getTodoById(db, createdTodo.id)).toBeUndefined();
+  });
+
+  test("rejects todo priority outside 1-5", async () => {
+    let failed = false;
+
+    try {
+      await createTodo(db, {
+        description: "bad priority",
+        status: "todo",
+        priority: 6
+      });
+    } catch {
+      failed = true;
+    }
+
+    expect(failed).toBe(true);
   });
 
   test("returns blocked state for todos", async () => {
@@ -181,6 +217,100 @@ describe("db schema", () => {
     expect(nextTwo[1]?.id).toBe(readyB.id);
   });
 
+  test("getNextTodos prioritizes earlier due dates, then higher priority", async () => {
+    const lateHigh = requireValue(
+      await createTodo(db, {
+        description: "late-high",
+        status: "todo",
+        dueDate: "2031-12-01",
+        priority: 5
+      }),
+      "Expected late-high todo"
+    );
+    const soonLow = requireValue(
+      await createTodo(db, {
+        description: "soon-low",
+        status: "todo",
+        dueDate: "2030-01-01",
+        priority: 1
+      }),
+      "Expected soon-low todo"
+    );
+    const soonHigh = requireValue(
+      await createTodo(db, {
+        description: "soon-high",
+        status: "todo",
+        dueDate: "2030-01-01",
+        priority: 4
+      }),
+      "Expected soon-high todo"
+    );
+
+    const next = await getNextTodos(db, 3);
+
+    expect(next[0]?.id).toBe(soonHigh.id);
+    expect(next[1]?.id).toBe(soonLow.id);
+    expect(next[2]?.id).toBe(lateHigh.id);
+  });
+
+  test("getTodosForGet applies blocked, min-priority, and due date filters", async () => {
+    const blocker = requireValue(
+      await createTodo(db, {
+        description: "blocker",
+        status: "in_progress",
+        dueDate: "2030-01-01",
+        priority: 3
+      }),
+      "Expected blocker"
+    );
+    const blockedTodo = requireValue(
+      await createTodo(db, {
+        description: "blocked",
+        status: "todo",
+        dueDate: "2030-01-05",
+        priority: 5
+      }),
+      "Expected blocked todo"
+    );
+    const readySoon = requireValue(
+      await createTodo(db, {
+        description: "ready-soon",
+        status: "todo",
+        dueDate: "2030-01-03",
+        priority: 4
+      }),
+      "Expected ready soon"
+    );
+    const readyLateLow = requireValue(
+      await createTodo(db, {
+        description: "ready-late-low",
+        status: "todo",
+        dueDate: "2030-02-01",
+        priority: 1
+      }),
+      "Expected ready late low"
+    );
+
+    await addDependency(db, blockedTodo.id, blocker.id);
+
+    const blockedOnly = await getTodosForGet(db, {
+      limit: 5,
+      actionableOnly: false,
+      blocked: true
+    });
+    expect(blockedOnly.some((todo) => todo.id === blockedTodo.id)).toBe(true);
+
+    const filteredReady = await getTodosForGet(db, {
+      limit: 5,
+      actionableOnly: true,
+      minPriority: 3,
+      dueBefore: "2030-01-31"
+    });
+
+    expect(filteredReady.map((todo) => todo.id)).toEqual([readySoon.id]);
+    expect(filteredReady.some((todo) => todo.id === readyLateLow.id)).toBe(false);
+  });
+
   test("addTodo upserts tag path and attaches predecessors", async () => {
     const predecessorA = requireValue(
       await createTodo(db, { description: "map-a", status: "completed" }),
@@ -196,7 +326,12 @@ describe("db schema", () => {
         description: "reduce",
         status: "todo",
         tagPath: "work/backend",
-        predecessorIds: [predecessorA.id, predecessorB.id]
+        predecessorIds: [predecessorA.id, predecessorB.id],
+        inputArtifacts: "logs/map.txt",
+        outputArtifacts: "reports/reduce.md",
+        workNotes: "Need to verify reducer output",
+        priority: 2,
+        dueDate: "2030-01-01"
       }),
       "Expected added todo"
     );
@@ -205,6 +340,11 @@ describe("db schema", () => {
     expect(added.status).toBe("todo");
     expect(added.isBlocked).toBe(true);
     expect(added.tagId).toBeDefined();
+    expect(added.inputArtifacts).toBe("logs/map.txt");
+    expect(added.outputArtifacts).toBe("reports/reduce.md");
+    expect(added.workNotes).toBe("Need to verify reducer output");
+    expect(added.priority).toBe(2);
+    expect(added.dueDate).toBe("2030-01-01");
 
     const tags = await getTags(db);
     const work = tags.find((tag) => tag.name === "work" && tag.parentId === null);

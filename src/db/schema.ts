@@ -43,7 +43,14 @@ export const todosTable = sqliteTable(
     id: int().primaryKey({ autoIncrement: true }),
     description: text().notNull(),
     tagId: int("tag_id"),
-    status: text({ enum: todoStatusValues }).notNull().default("todo")
+    status: text({ enum: todoStatusValues }).notNull().default("todo"),
+    inputArtifacts: text("input_artifacts"),
+    outputArtifacts: text("output_artifacts"),
+    workNotes: text("work_notes"),
+    priority: int(),
+    dueDate: text("due_date"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
   },
   (table) => [
     foreignKey({
@@ -54,6 +61,10 @@ export const todosTable = sqliteTable(
     check(
       "todos_status_check",
       sql`${table.status} in ('todo', 'in_progress', 'completed')`
+    ),
+    check(
+      "todos_priority_range_check",
+      sql`${table.priority} is null or (${table.priority} between 1 and 5)`
     )
   ]
 );

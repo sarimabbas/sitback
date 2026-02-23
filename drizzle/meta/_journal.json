@@ -78,6 +78,13 @@
       "when": 1771820245552,
       "tag": "0010_strange_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1771823472807,
+      "tag": "0011_fancy_enchantress",
+      "breakpoints": true
     }
   ]
 }

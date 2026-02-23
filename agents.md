@@ -10,6 +10,8 @@
 
 - Prefer Bun-native APIs when practical (`Bun.serve`, `Bun.file`, Bun SQL/Redis APIs).
 - Keep TypeScript strict; run `bun run lint` and `bun run test` for verification.
+- Useful manual CLI smoke test for add command:
+  - `SITBACK_CONFIG_DIR="/tmp/sitback-add-extra" bun run src/index.ts add --description "compile report" --status todo --priority 2 --due-date 2031-04-15 --input-artifacts "logs/build.log" --output-artifacts "reports/build.md" --work-notes "Investigate flaky step"`
 
 ## SQLite migration and trigger policy
 

@@ -58,6 +58,13 @@ export async function getExportTree(db: DbClient): Promise<{
       description: todo.description,
       status: todo.status,
       tagId: todo.tagId ?? null,
+      inputArtifacts: todo.inputArtifacts ?? null,
+      outputArtifacts: todo.outputArtifacts ?? null,
+      workNotes: todo.workNotes ?? null,
+      priority: todo.priority ?? null,
+      dueDate: todo.dueDate ?? null,
+      createdAt: todo.createdAt,
+      updatedAt: todo.updatedAt,
       isBlocked: todo.isBlocked,
       predecessorIds: [],
       children: []

@@ -1,5 +1,5 @@
 import { parseArgs } from "util";
-import { addTodo, db, getExportTree, getNextTodos, getTodosByIds, initializeDatabase } from "./db";
+import { addTodo, db, getExportTree, getTodosByIds, getTodosForGet, initializeDatabase } from "./db";
 import type { ExportTagNode, ExportTodoNode } from "./db";
 
 await initializeDatabase();
@@ -11,8 +11,8 @@ function printHelp(): void {
 
 Usage:
   sb help
-  sb add --description <text> [--tag path/to/tag] [--status todo|in_progress|completed] [--predecessors 1,2]
-  sb get [--ids 1,2] [--num 3]
+  sb add --description <text> [--tag path/to/tag] [--status todo|in_progress|completed] [--predecessors 1,2] [--priority 1-5] [--due-date YYYY-MM-DD]
+  sb get [--ids 1,2] [--num 3] [--blocked true|false] [--min-priority 3] [--due-before YYYY-MM-DD] [--due-after YYYY-MM-DD]
   sb export [--format json5|markdown]
   sb --help
   sb -h
@@ -29,11 +29,14 @@ Global options:
 Examples:
   sb help
   sb add --description "map results" --tag "work/backend" --status todo
+  sb add --description "summarize run" --input-artifacts "logs/run-42.txt" --output-artifacts "reports/summary.md"
   sb add --description "reduce results" --predecessors 1,2
   sb get
   # no options -> best next actionable todo (unblocked + status=todo, limit 1)
   sb get --num 3
   sb get --ids 4,8,15
+  sb get --blocked true --min-priority 4
+  sb get --due-before 2030-12-31
   sb export
   sb export --format json5
   sb export --format markdown
@@ -90,8 +93,17 @@ const parsed = parseArgs({
     tag: { type: "string" },
     status: { type: "string" },
     predecessors: { type: "string" },
+    "input-artifacts": { type: "string" },
+    "output-artifacts": { type: "string" },
+    "work-notes": { type: "string" },
+    priority: { type: "string" },
+    "due-date": { type: "string" },
     ids: { type: "string" },
-    num: { type: "string" }
+    num: { type: "string" },
+    blocked: { type: "string" },
+    "min-priority": { type: "string" },
+    "due-before": { type: "string" },
+    "due-after": { type: "string" }
   },
   strict: true,
   allowPositionals: true
@@ -134,12 +146,33 @@ if (command === "add") {
     predecessorIds = parsedIds;
   }
 
+  let priority: number | undefined;
+  if (values.priority && values.priority.trim().length > 0) {
+    const parsedPriority = Number.parseInt(values.priority, 10);
+    if (!Number.isInteger(parsedPriority) || parsedPriority < 1 || parsedPriority > 5) {
+      console.error("Invalid --priority. Use an integer from 1 to 5");
+      process.exit(1);
+    }
+    priority = parsedPriority;
+  }
+
+  const dueDate = values["due-date"]?.trim();
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    console.error("Invalid --due-date. Use YYYY-MM-DD");
+    process.exit(1);
+  }
+
   try {
     const added = await addTodo(db, {
       description,
       tagPath: values.tag,
       status,
-      predecessorIds
+      predecessorIds,
+      inputArtifacts: values["input-artifacts"]?.trim() || undefined,
+      outputArtifacts: values["output-artifacts"]?.trim() || undefined,
+      workNotes: values["work-notes"]?.trim() || undefined,
+      priority,
+      dueDate
     });
 
     if (!added) {
@@ -159,9 +192,49 @@ if (command === "add") {
 if (command === "get") {
   const idsRaw = values.ids?.trim();
   const numRaw = values.num?.trim();
+  const blockedRaw = values.blocked?.trim();
+  const minPriorityRaw = values["min-priority"]?.trim();
+  const dueBefore = values["due-before"]?.trim();
+  const dueAfter = values["due-after"]?.trim();
+
+  let blocked: boolean | undefined;
+  if (blockedRaw !== undefined) {
+    if (blockedRaw === "true") {
+      blocked = true;
+    } else if (blockedRaw === "false") {
+      blocked = false;
+    } else {
+      console.error("Invalid --blocked. Use true or false");
+      process.exit(1);
+    }
+  }
+
+  let minPriority: number | undefined;
+  if (minPriorityRaw) {
+    const parsedMinPriority = Number.parseInt(minPriorityRaw, 10);
+    if (!Number.isInteger(parsedMinPriority) || parsedMinPriority < 1 || parsedMinPriority > 5) {
+      console.error("Invalid --min-priority. Use an integer from 1 to 5");
+      process.exit(1);
+    }
+    minPriority = parsedMinPriority;
+  }
+
+  if (dueBefore && !/^\d{4}-\d{2}-\d{2}$/.test(dueBefore)) {
+    console.error("Invalid --due-before. Use YYYY-MM-DD");
+    process.exit(1);
+  }
+
+  if (dueAfter && !/^\d{4}-\d{2}-\d{2}$/.test(dueAfter)) {
+    console.error("Invalid --due-after. Use YYYY-MM-DD");
+    process.exit(1);
+  }
 
   if (idsRaw && numRaw) {
     console.error("Warning: --num is ignored when --ids is provided");
+  }
+
+  if (idsRaw && (blockedRaw !== undefined || minPriorityRaw || dueBefore || dueAfter)) {
+    console.error("Warning: --blocked/--min-priority/--due-before/--due-after are ignored when --ids is provided");
   }
 
   if (idsRaw) {
@@ -193,7 +266,14 @@ if (command === "get") {
   }
 
   try {
-    const todos = await getNextTodos(db, limit);
+    const todos = await getTodosForGet(db, {
+      limit,
+      actionableOnly: blocked === undefined,
+      blocked,
+      minPriority,
+      dueBefore,
+      dueAfter
+    });
     console.log(Bun.JSON5.stringify(todos, null, 2));
     process.exit(0);
   } catch (error) {

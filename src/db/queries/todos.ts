@@ -86,12 +86,93 @@ export async function getTodosByIds(db: DbClient, ids: number[]) {
 
 export async function getNextTodos(db: DbClient, limit: number) {
   const ready = await getReadyTodos(db);
-  const sorted = [...ready].sort((a, b) => a.id - b.id).slice(0, limit);
+  const sorted = [...ready]
+    .sort((a, b) => {
+      const aDueDate = a.dueDate ?? "9999-12-31";
+      const bDueDate = b.dueDate ?? "9999-12-31";
+
+      if (aDueDate !== bDueDate) {
+        return aDueDate.localeCompare(bDueDate);
+      }
+
+      const aPriority = a.priority ?? 0;
+      const bPriority = b.priority ?? 0;
+
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority;
+      }
+
+      return a.id - b.id;
+    })
+    .slice(0, limit);
 
   return sorted.map((todo) => ({
     ...todo,
     isBlocked: false
   }));
+}
+
+export async function getTodosForGet(
+  db: DbClient,
+  options: {
+    limit: number;
+    actionableOnly: boolean;
+    blocked?: boolean;
+    minPriority?: number;
+    dueBefore?: string;
+    dueAfter?: string;
+  }
+) {
+  const allTodos = await getTodos(db);
+
+  let filtered = allTodos;
+
+  if (options.actionableOnly) {
+    filtered = filtered.filter((todo) => todo.status === "todo" && !todo.isBlocked);
+  }
+
+  if (options.blocked !== undefined) {
+    filtered = filtered.filter((todo) => todo.isBlocked === options.blocked);
+  }
+
+  if (options.minPriority !== undefined) {
+    const minPriority = options.minPriority;
+    filtered = filtered.filter((todo) => (todo.priority ?? 0) >= minPriority);
+  }
+
+  if (options.dueBefore) {
+    const dueBefore = options.dueBefore;
+    filtered = filtered.filter(
+      (todo) => todo.dueDate !== null && todo.dueDate.localeCompare(dueBefore) <= 0
+    );
+  }
+
+  if (options.dueAfter) {
+    const dueAfter = options.dueAfter;
+    filtered = filtered.filter(
+      (todo) => todo.dueDate !== null && todo.dueDate.localeCompare(dueAfter) >= 0
+    );
+  }
+
+  return filtered
+    .sort((a, b) => {
+      const aDueDate = a.dueDate ?? "9999-12-31";
+      const bDueDate = b.dueDate ?? "9999-12-31";
+
+      if (aDueDate !== bDueDate) {
+        return aDueDate.localeCompare(bDueDate);
+      }
+
+      const aPriority = a.priority ?? 0;
+      const bPriority = b.priority ?? 0;
+
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority;
+      }
+
+      return a.id - b.id;
+    })
+    .slice(0, options.limit);
 }
 
 export async function addTodo(
@@ -101,6 +182,11 @@ export async function addTodo(
     status?: "todo" | "in_progress" | "completed";
     tagPath?: string;
     predecessorIds?: number[];
+    inputArtifacts?: string;
+    outputArtifacts?: string;
+    workNotes?: string;
+    priority?: number;
+    dueDate?: string;
   }
 ) {
   const resolvedTag = input.tagPath ? await ensureTagPath(db, input.tagPath) : undefined;
@@ -108,7 +194,12 @@ export async function addTodo(
   const created = await createTodo(db, {
     description: input.description,
     status: input.status ?? "todo",
-    tagId: resolvedTag?.id
+    tagId: resolvedTag?.id,
+    inputArtifacts: input.inputArtifacts,
+    outputArtifacts: input.outputArtifacts,
+    workNotes: input.workNotes,
+    priority: input.priority,
+    dueDate: input.dueDate
   });
 
   if (!created) {
