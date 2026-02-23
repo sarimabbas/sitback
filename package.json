@@ -14,7 +14,14 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "start": "bun run src/index.ts",
-    "build:bin": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/sb"
+    "build:bin": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/sb",
+    "test": "bun test",
+    "lint": "bunx tsc --noEmit",
+    "db:push": "bunx drizzle-kit push",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:generate:custom": "bunx drizzle-kit generate --custom",
+    "db:migrate": "bunx drizzle-kit migrate",
+    "db:studio": "bunx drizzle-kit studio"
   },
   "bin": {
     "sb": "src/index.ts"

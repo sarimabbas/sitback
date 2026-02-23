@@ -20,3 +20,23 @@ sb request --tag "tag1" --num 2
 sb complete <todo_id>
 sb export --format markdown > TODO.md
 ```
+
+## Scripts
+
+```bash
+# run CLI
+bun run dev
+bun run start
+
+# build standalone binary
+bun run build:bin
+
+# database workflows (use one approach)
+bun run db:push
+# or
+bun run db:generate
+bun run db:migrate
+
+# inspect DB with Drizzle Studio
+bun run db:studio
+```

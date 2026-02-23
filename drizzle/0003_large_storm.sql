@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `tags_root_name_unique` ON `tags` (`name`) WHERE "tags"."parent_id" is null;
