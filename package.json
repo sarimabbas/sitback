@@ -1,0 +1,27 @@
+{
+  "name": "sitback",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.9",
+    "tsx": "^4.21.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "start": "bun run src/index.ts",
+    "build:bin": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/sb"
+  },
+  "bin": {
+    "sb": "src/index.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1"
+  }
+}
