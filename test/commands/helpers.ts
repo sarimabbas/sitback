@@ -5,6 +5,24 @@ import { join } from "node:path";
 export function createTempConfigDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   mkdirSync(dir, { recursive: true });
+
+  const bunBin = Bun.which("bun") ?? "bun";
+  const initResult = Bun.spawnSync({
+    cmd: [bunBin, "run", "src/index.ts", "init"],
+    cwd: process.cwd(),
+    env: {
+      ...Bun.env,
+      SITBACK_CONFIG_DIR: dir
+    },
+    stdout: "pipe",
+    stderr: "pipe"
+  });
+
+  if (initResult.exitCode !== 0) {
+    const stderr = Buffer.from(initResult.stderr).toString("utf8").trim();
+    throw new Error(`Failed to initialize test database: ${stderr}`);
+  }
+
   return dir;
 }
 

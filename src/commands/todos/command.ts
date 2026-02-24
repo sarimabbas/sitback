@@ -8,6 +8,9 @@ import { createTodoUpdateCommand } from "./update";
 export function createTodoCommand(db: DbClient) {
   return new Command()
     .description("Manage todos")
+    .action(function () {
+      return this.showHelp();
+    })
     .command("add", createTodoAddCommand(db))
     .command("get", createTodoGetCommand(db))
     .command("update", createTodoUpdateCommand(db))

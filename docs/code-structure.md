@@ -4,16 +4,19 @@
 flowchart TD
   subgraph CLI[src/index.ts]
     CInit[initializeDatabase]
+    CAssert[assertDatabaseInitialized]
     CRoot[build root Command + parse]
     CTodo[createTodoCommand]
     CTag[createTagCommand]
     CExport[createExportCommand]
+    CInitCmd[createInitCommand]
   end
 
   subgraph Commands[src/commands/*]
     CmdTodoShell[src/commands/todos/command.ts]
     CmdTagShell[src/commands/tags/command.ts]
     CmdExportShell[src/commands/export/command.ts]
+    CmdInitShell[src/commands/init/command.ts]
     CmdAdd[runAddCommand]
     CmdDelete[runDeleteCommand]
     CmdUpdate[runUpdateCommand]
@@ -23,6 +26,7 @@ flowchart TD
     CmdTagUpdate[runTagUpdateCommand]
     CmdTagDelete[runTagDeleteCommand]
     CmdExport[runExportCommand]
+    CmdInit[runInitCommand]
     CmdShared[parsePositiveInteger / parseIdsList / parseDateString / parsePriority / parseBooleanString]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
   end
@@ -31,6 +35,7 @@ flowchart TD
     DEnsure[ensureConfigDir]
     DPragma[applySqlitePragmas]
     DInit[initializeDatabase]
+    DAssert[assertDatabaseInitialized]
     DRunMig[migrate with drizzle folder]
   end
 
@@ -98,12 +103,15 @@ flowchart TD
   Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/update.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
 
   CInit --> DInit
+  CAssert --> DAssert
   CRoot --> CTodo
   CRoot --> CTag
   CRoot --> CExport
+  CRoot --> CInitCmd
   CTodo --> CmdTodoShell
   CTag --> CmdTagShell
   CExport --> CmdExportShell
+  CInitCmd --> CmdInitShell
   CmdTodoShell --> CmdAdd
   CmdTodoShell --> CmdGet
   CmdTodoShell --> CmdUpdate
@@ -113,10 +121,12 @@ flowchart TD
   CmdTagShell --> CmdTagUpdate
   CmdTagShell --> CmdTagDelete
   CmdExportShell --> CmdExport
+  CmdInitShell --> CmdInit
 
   DInit --> DEnsure
   DInit --> DPragma
-  DInit --> DRunMig
+  DAssert --> DRunMig
+  CmdInit --> DRunMig
   DRunMig --> Migrations
 
   SSql --> SGen
@@ -194,6 +204,7 @@ flowchart TD
   QBarrel --> QExport
 
   Tests --> DInit
+  Tests --> CmdInit
   Tests --> QTodos
   Tests --> QTags
   Tests --> QDeps
@@ -204,9 +215,10 @@ flowchart TD
 ## Notes
 
 - Cliffy root setup and parse flow live directly in `src/index.ts`.
+- `sb init` is the explicit migration entrypoint; normal command execution checks migration state first.
 - Commands are grouped by domain under `src/commands/todos/*`, `src/commands/tags/*`, and `src/commands/export/*`.
 - Shared CLI option parsing/validation is centralized in `src/commands/shared.ts`.
 - Scheduling behavior is centralized in `compareTodosForScheduling` and reused by `getNextTodos`/`getTodosForGet`.
 - Todo blocked-state selection is centralized in `todosWithBlockedSelection` and reused by `getTodoById`/`getTodos`/`getTodosByIds`/`getTodosForGet`.
 - Tag path upsert is centralized in `ensureTagPath` and reused by `addTodo`.
-- Migration SQL (`drizzle/*.sql`) is part of runtime startup via `initializeDatabase`, so first run initializes schema.
+- Migration SQL (`drizzle/*.sql`) is applied by `sb init` (via `runMigrations`), not by default command startup.

@@ -4,6 +4,7 @@
 
 - Use Bun as the default runtime and package manager.
 - Prefer `bun <file>`, `bun run <script>`, `bun test`, `bun build`, `bun install`, and `bunx <tool>`.
+- Use `bun -e "..."` for quick ad-hoc one-liners when you need to inspect runtime behavior or test tiny snippets.
 - Do not add `dotenv` bootstrap code; Bun loads `.env` automatically.
 
 ## App conventions
