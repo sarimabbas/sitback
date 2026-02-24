@@ -4,6 +4,9 @@
 
 - Use Bun as the default runtime and package manager.
 - Prefer `bun <file>`, `bun run <script>`, `bun install`, and `bunx <tool>`.
+- For workspace scripts, use `bun --filter '<workspace-name-or-glob>' <script>`.
+  - `--filter` accepts a glob pattern and runs matching workspace packages concurrently while respecting dependency order.
+  - Example: `bun --filter 'lib-*' my-script`
 - Use `bun -e "..."` for quick ad-hoc one-liners when you need to inspect runtime behavior or test tiny snippets.
 - Keep `docs/code-structure.md` in sync whenever functions are added, removed, renamed, or moved.
 - After updating the diagram, validate it by rendering with Mermaid CLI:
@@ -12,9 +15,9 @@
 ## CLI architecture
 
 - Prefer Bun-native APIs when practical (`Bun.serve`, `Bun.file`, Bun SQL/Redis APIs).
-- Keep TypeScript strict; run `bun run cli:lint` and `bun run cli:test` for verification.
+- Keep TypeScript strict; run `bun --filter '@sitback/cli' lint` and `bun --filter '@sitback/cli' test` for verification.
 - Useful manual CLI smoke test for add command:
-  - `SITBACK_CONFIG_DIR="/tmp/sitback-add-extra" bun run src/index.ts todo add --description "compile report" --status todo --priority 2 --due-date 2031-04-15 --work-notes "Investigate flaky step"`
+  - `SITBACK_CONFIG_DIR="/tmp/sitback-add-extra" bun --filter '@sitback/cli' run src/index.ts todo add --description "compile report" --status todo --priority 2 --due-date 2031-04-15 --work-notes "Investigate flaky step"`
 - Do not add `dotenv` bootstrap code in the CLI; Bun loads `.env` automatically.
 - Prefer Cliffy primitives over custom parsing/validation in action handlers.
 - Use option metadata first:
@@ -39,8 +42,8 @@
 - `db:squash` rewrites migration history, generates a fresh baseline migration, appends `src/db/custom-migrations.sql` into that new migration, and runs migrate.
 - Do **not** use `db:squash` on shared/staging/production databases or after migrations are already distributed to other environments.
 - After migration edits, run:
-  - `bun run cli:lint`
-  - `bun run cli:test`
+  - `bun --filter '@sitback/cli' lint`
+  - `bun --filter '@sitback/cli' test`
 - The DAG guarantees for todos/tags rely on triggers (cycle prevention and completion guards). If triggers are not recreated after table rebuilds, those protections can be lost.
 
 ## Frontend architecture

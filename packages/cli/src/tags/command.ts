@@ -1,5 +1,5 @@
 import { Command } from "@cliffy/command";
-import type { DbClient } from "@/db";
+import type { DbClient } from "@sitback/db";
 import { createTagAddCommand } from "./add";
 import { createTagDeleteCommand } from "./delete";
 import { createTagGetCommand } from "./get";

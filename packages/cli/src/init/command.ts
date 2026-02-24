@@ -1,5 +1,5 @@
 import { Command } from "@cliffy/command";
-import { runMigrations } from "@/db";
+import { runMigrations } from "@sitback/db";
 
 export async function runInitCommand(): Promise<string> {
   await runMigrations();

@@ -1,6 +1,6 @@
 import { Command, EnumType } from "@cliffy/command";
-import { getExportTree } from "@/db";
-import type { DbClient, ExportTagNode, ExportTodoNode } from "@/db";
+import { getExportTree } from "@sitback/db";
+import type { DbClient, ExportTagNode, ExportTodoNode } from "@sitback/db";
 
 type ExportValues = {
   format: "json5" | "markdown";

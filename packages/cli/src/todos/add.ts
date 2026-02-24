@@ -1,8 +1,8 @@
 import { Command, EnumType } from "@cliffy/command";
-import { addTodo } from "@/db";
-import type { DbClient } from "@/db";
-import { parsePositiveInteger, parsePriority } from "@/commands/shared";
-import { dateYmdType, tagPathType } from "@/commands/types";
+import { addTodo } from "@sitback/db";
+import type { DbClient } from "@sitback/db";
+import { parsePositiveInteger, parsePriority } from "../shared";
+import { dateYmdType, tagPathType } from "../types";
 
 type TodoStatus = "todo" | "in_progress" | "completed";
 

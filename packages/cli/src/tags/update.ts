@@ -1,7 +1,7 @@
 import { Command } from "@cliffy/command";
-import { updateTag } from "@/db";
-import type { DbClient } from "@/db";
-import { parsePositiveInteger } from "@/commands/shared";
+import { updateTag } from "@sitback/db";
+import type { DbClient } from "@sitback/db";
+import { parsePositiveInteger } from "../shared";
 import { normalizeTagName } from "./shared";
 
 type UpdateTagValues = {

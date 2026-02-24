@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+const cliPackageRoot = join(import.meta.dir, "..", "..");
+
 export function createTempConfigDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   mkdirSync(dir, { recursive: true });
@@ -9,7 +11,7 @@ export function createTempConfigDir(prefix: string): string {
   const bunBin = Bun.which("bun") ?? "bun";
   const initResult = Bun.spawnSync({
     cmd: [bunBin, "run", "src/index.ts", "init"],
-    cwd: process.cwd(),
+    cwd: cliPackageRoot,
     env: {
       ...Bun.env,
       SITBACK_CONFIG_DIR: dir
@@ -35,7 +37,7 @@ export function runCli(args: string[], configDir: string) {
 
   const processResult = Bun.spawnSync({
     cmd: [bunBin, "run", "src/index.ts", ...args],
-    cwd: process.cwd(),
+    cwd: cliPackageRoot,
     env: {
       ...Bun.env,
       SITBACK_CONFIG_DIR: configDir

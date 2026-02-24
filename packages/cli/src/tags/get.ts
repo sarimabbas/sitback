@@ -1,7 +1,7 @@
 import { Command } from "@cliffy/command";
-import { getAllTagsSummary, getTagSummary } from "@/db";
-import type { DbClient } from "@/db";
-import { parsePositiveInteger } from "@/commands/shared";
+import { getAllTagsSummary, getTagSummary } from "@sitback/db";
+import type { DbClient } from "@sitback/db";
+import { parsePositiveInteger } from "../shared";
 
 type GetTagValues = {
   id?: number;

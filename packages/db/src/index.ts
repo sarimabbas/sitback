@@ -8,7 +8,7 @@ import { applySqlitePragmas } from "./pragmas";
 ensureConfigDir();
 
 export const db = drizzle({ connection: { url: `file:${dbFilePath}` } });
-const migrationsFolder = join(import.meta.dir, "..", "..", "drizzle");
+const migrationsFolder = join(import.meta.dir, "..", "drizzle");
 const migrationsJournalFile = join(migrationsFolder, "meta", "_journal.json");
 
 function getExpectedMigrationCount(): number {

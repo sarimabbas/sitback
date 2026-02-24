@@ -1,8 +1,8 @@
 import { Command } from "@cliffy/command";
-import { getTagById, getTodosByIds, getTodosForGet, resolveTagPath } from "@/db";
-import type { DbClient } from "@/db";
-import { parsePositiveInteger, parsePriority } from "@/commands/shared";
-import { dateYmdType, tagPathType } from "@/commands/types";
+import { getTagById, getTodosByIds, getTodosForGet, resolveTagPath } from "@sitback/db";
+import type { DbClient } from "@sitback/db";
+import { parsePositiveInteger, parsePriority } from "../shared";
+import { dateYmdType, tagPathType } from "../types";
 
 type GetValues = {
   ids?: number[];
