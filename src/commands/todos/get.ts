@@ -1,23 +1,19 @@
 import { Command } from "@cliffy/command";
 import { getTagById, getTodosByIds, getTodosForGet, resolveTagPath } from "@/db";
 import type { DbClient } from "@/db";
-import {
-  parseBooleanString,
-  parseDateString,
-  parseIdsList,
-  parsePositiveInteger,
-  parsePriority
-} from "@/commands/shared";
+import { parsePositiveInteger, parsePriority } from "@/commands/shared";
+import { dateYmdType, tagPathType } from "@/commands/types";
 
 type GetValues = {
-  ids?: string;
-  num?: string;
-  blocked?: string;
-  minPriority?: string;
+  ids?: number[];
+  num: number;
+  numProvided?: boolean;
+  blocked?: boolean;
+  minPriority?: number;
   dueBefore?: string;
   dueAfter?: string;
   tag?: string;
-  tagId?: string;
+  tagId?: number;
 };
 
 export async function runGetCommand(
@@ -25,51 +21,39 @@ export async function runGetCommand(
   values: GetValues
 ): Promise<{ output: string; warnings: string[] }> {
   const warnings: string[] = [];
-  const idsRaw = values.ids?.trim();
-  const numRaw = values.num?.trim();
-  const blockedRaw = values.blocked?.trim();
-  const minPriorityRaw = values.minPriority?.trim();
-  const dueBefore = values.dueBefore?.trim();
-  const dueAfter = values.dueAfter?.trim();
-  const tagPathRaw = values.tag?.trim();
-  const tagIdRaw = values.tagId?.trim();
+  const idsRaw = values.ids;
+  const num = values.num;
+  const blocked = values.blocked;
+  const minPriorityRaw = values.minPriority;
+  const dueBefore = values.dueBefore;
+  const dueAfter = values.dueAfter;
+  const tagPathRaw = values.tag;
+  const tagIdRaw = values.tagId;
+  const isNumProvided = values.numProvided ?? false;
 
-  if (tagPathRaw && tagIdRaw) {
+  if (tagPathRaw && tagIdRaw !== undefined) {
     throw new Error("Use either --tag or --tag-id, not both");
   }
 
-  let blocked: boolean | undefined;
-  if (blockedRaw !== undefined) {
-    blocked = parseBooleanString(blockedRaw, "--blocked");
-  }
-
   let minPriority: number | undefined;
-  if (minPriorityRaw) {
+  if (minPriorityRaw !== undefined) {
     minPriority = parsePriority(minPriorityRaw, "--min-priority");
   }
 
-  if (dueBefore) {
-    parseDateString(dueBefore, "--due-before");
-  }
-
-  if (dueAfter) {
-    parseDateString(dueAfter, "--due-after");
-  }
-
-  if (idsRaw && numRaw) {
+  if (idsRaw !== undefined && isNumProvided) {
     warnings.push("Warning: --num is ignored when --ids is provided");
   }
 
-  if (idsRaw && (blockedRaw !== undefined || minPriorityRaw || dueBefore || dueAfter)) {
+  if (idsRaw !== undefined && (blocked !== undefined || minPriorityRaw !== undefined || dueBefore || dueAfter)) {
     warnings.push("Warning: --blocked/--min-priority/--due-before/--due-after are ignored when --ids is provided");
   }
 
-  if (idsRaw && (tagPathRaw || tagIdRaw)) {
+  if (idsRaw !== undefined && (tagPathRaw || tagIdRaw !== undefined)) {
     warnings.push("Warning: --tag/--tag-id are ignored when --ids is provided");
   }
 
-  if (idsRaw) {
-    const parsedIds = parseIdsList(idsRaw, "--ids");
+  if (idsRaw !== undefined) {
+    const parsedIds = idsRaw.map((id) => parsePositiveInteger(id, "--ids"));
     const todos = await getTodosByIds(db, parsedIds);
 
     return {
@@ -78,13 +62,10 @@ export async function runGetCommand(
     };
   }
 
-  let limit = 1;
-  if (numRaw) {
-    limit = parsePositiveInteger(numRaw, "--num");
-  }
+  const limit = parsePositiveInteger(num, "--num");
 
   let resolvedTagId: number | undefined;
-  if (tagIdRaw) {
+  if (tagIdRaw !== undefined) {
     const parsedTagId = parsePositiveInteger(tagIdRaw, "--tag-id");
     const tag = await getTagById(db, parsedTagId);
     if (!tag) {
@@ -125,19 +106,30 @@ export async function runGetCommand(
 
 export function createTodoGetCommand(db: DbClient) {
   return new Command()
+    .type("tag-path", tagPathType)
+    .type("date-ymd", dateYmdType)
     .description("Get todos")
-    .option("--ids <ids:string>", "Comma-separated todo IDs")
-    .option("--num <num:string>", "Number of todos to return")
-    .option("--blocked <blocked:string>", "Filter by blocked state (true|false)")
-    .option("--min-priority <value:string>", "Minimum priority filter (1-5)")
-    .option("--due-before <value:string>", "Filter by due date upper bound")
-    .option("--due-after <value:string>", "Filter by due date lower bound")
-    .option("--tag <tag:string>", "Filter by slash tag path")
-    .option("--tag-id <value:string>", "Filter by tag ID")
-    .action(async (options) => {
+    .option("--ids <ids:integer[]>", "Comma-separated todo IDs")
+    .option("--num <num:integer>", "Number of todos to return", {
+      default: 1,
+      defaultText: "1"
+    })
+    .option("--blocked <blocked:boolean>", "Filter by blocked state (true|false)", {
+      defaultText: "actionable-only when omitted"
+    })
+    .option("--min-priority <value:integer>", "Minimum priority filter (1-5)")
+    .option("--due-before <value:date-ymd>", "Filter by due date upper bound")
+    .option("--due-after <value:date-ymd>", "Filter by due date lower bound")
+    .option("--tag <tag:tag-path>", "Filter by slash tag path")
+    .option("--tag-id <value:integer>", "Filter by tag ID")
+    .action(async function (this: { getRawArgs: () => string[] }, options) {
+      const rawArgs = this.getRawArgs();
+      const numProvided = rawArgs.some((arg) => arg === "--num" || arg.startsWith("--num="));
+
       const result = await runGetCommand(db, {
         ids: options.ids,
         num: options.num,
+        numProvided,
         blocked: options.blocked,
         minPriority: options.minPriority,
         dueBefore: options.dueBefore,

@@ -1,35 +1,30 @@
-import { Command } from "@cliffy/command";
+import { Command, EnumType } from "@cliffy/command";
 import { getTagById, resolveTagPath, updateTodoWithRelations } from "@/db";
 import type { DbClient } from "@/db";
-import {
-  parseDateString,
-  parseIdsList,
-  parsePositiveInteger,
-  parsePriority,
-  parseTodoStatus
-} from "@/commands/shared";
+import { parsePositiveInteger, parsePriority } from "@/commands/shared";
+import { dateYmdType, tagPathType } from "@/commands/types";
+
+type TodoStatus = "todo" | "in_progress" | "completed";
 
 type UpdateValues = {
-  id?: string;
+  id: number;
   description?: string;
-  status?: string;
-  predecessors?: string;
+  status?: TodoStatus;
+  predecessors?: number[];
+  clearPredecessors?: boolean;
   tag?: string;
-  tagId?: string;
+  tagId?: number;
   inputArtifacts?: string;
   outputArtifacts?: string;
   workNotes?: string;
-  priority?: string;
+  priority?: number;
   dueDate?: string;
 };
 
-export async function runUpdateCommand(db: DbClient, values: UpdateValues): Promise<string> {
-  const idRaw = values.id?.trim();
-  if (!idRaw) {
-    throw new Error("Missing required --id option");
-  }
+const todoStatusType = new EnumType(["todo", "in_progress", "completed"] as const);
 
-  const id = parsePositiveInteger(idRaw, "--id");
+export async function runUpdateCommand(db: DbClient, values: UpdateValues): Promise<string> {
+  const id = parsePositiveInteger(values.id, "--id");
 
   if (values.tag && values.tagId) {
     throw new Error("Use either --tag or --tag-id, not both");
@@ -37,11 +32,7 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
 
   let resolvedTagId: number | undefined;
   if (values.tagId !== undefined) {
-    const raw = values.tagId.trim();
-    if (raw.length === 0) {
-      throw new Error("Invalid --tag-id. Use a positive integer");
-    }
-    const parsedTagId = parsePositiveInteger(raw, "--tag-id");
+    const parsedTagId = parsePositiveInteger(values.tagId, "--tag-id");
     const tag = await getTagById(db, parsedTagId);
     if (!tag) {
       throw new Error(`Tag ${parsedTagId} not found`);
@@ -50,39 +41,28 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
   }
 
   if (values.tag !== undefined) {
-    const rawPath = values.tag.trim();
-    if (rawPath.length === 0) {
-      throw new Error("Invalid --tag. Use a slash-separated path");
-    }
-    const tag = await resolveTagPath(db, rawPath);
+    const tag = await resolveTagPath(db, values.tag);
     if (!tag) {
-      throw new Error(`Tag path not found: ${rawPath}`);
+      throw new Error(`Tag path not found: ${values.tag}`);
     }
     resolvedTagId = tag.id;
   }
 
   let parsedPriority: number | undefined;
   if (values.priority !== undefined) {
-    const raw = values.priority.trim();
-    if (raw.length === 0) {
-      throw new Error("Invalid --priority. Use an integer from 1 to 5");
-    }
-    parsedPriority = parsePriority(raw, "--priority");
+    parsedPriority = parsePriority(values.priority, "--priority");
   }
 
   let parsedDueDate: string | undefined;
   if (values.dueDate !== undefined) {
-    const raw = values.dueDate.trim();
-    if (raw.length === 0) {
-      throw new Error("Invalid --due-date. Use YYYY-MM-DD");
-    }
-    parsedDueDate = parseDateString(raw, "--due-date");
+    parsedDueDate = values.dueDate;
   }
 
   let predecessorIds: number[] | undefined;
-  if (values.predecessors !== undefined) {
-    const raw = values.predecessors.trim();
-    predecessorIds = raw.length === 0 ? [] : parseIdsList(raw, "--predecessors");
+  if (values.clearPredecessors) {
+    predecessorIds = [];
+  } else if (values.predecessors !== undefined) {
+    predecessorIds = values.predecessors.map((id) => parsePositiveInteger(id, "--predecessors"));
   }
 
   const changes: {
@@ -105,7 +85,7 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
   }
 
   if (values.status !== undefined) {
-    changes.status = parseTodoStatus(values.status, "--status");
+    changes.status = values.status;
   }
 
   if (resolvedTagId !== undefined) {
@@ -151,24 +131,29 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
 
 export function createTodoUpdateCommand(db: DbClient) {
   return new Command()
+    .type("todo-status", todoStatusType)
+    .type("tag-path", tagPathType)
+    .type("date-ymd", dateYmdType)
     .description("Update a todo")
-    .option("--id <id:string>", "Todo ID")
+    .option("--id <id:integer>", "Todo ID", { required: true })
     .option("--description <description:string>", "Todo description")
-    .option("--status <status:string>", "todo | in_progress | completed")
-    .option("--predecessors <predecessors:string>", "Comma-separated predecessor IDs")
-    .option("--tag <tag:string>", "Slash-separated tag path")
-    .option("--tag-id <value:string>", "Tag ID")
+    .option("--status <status:todo-status>", "Todo status")
+    .option("--predecessors <predecessors:integer[]>", "Comma-separated predecessor IDs")
+    .option("--clear-predecessors", "Clear predecessor IDs (takes precedence over --predecessors)")
+    .option("--tag <tag:tag-path>", "Slash-separated tag path")
+    .option("--tag-id <value:integer>", "Tag ID")
     .option("--input-artifacts <value:string>", "Input artifacts")
     .option("--output-artifacts <value:string>", "Output artifacts")
     .option("--work-notes <value:string>", "Work notes")
-    .option("--priority <priority:string>", "Priority 1-5")
-    .option("--due-date <value:string>", "Due date YYYY-MM-DD")
+    .option("--priority <priority:integer>", "Priority 1-5")
+    .option("--due-date <value:date-ymd>", "Due date YYYY-MM-DD")
     .action(async (options) => {
       const output = await runUpdateCommand(db, {
         id: options.id,
         description: options.description,
         status: options.status,
         predecessors: options.predecessors,
+        clearPredecessors: options.clearPredecessors,
         tag: options.tag,
         tagId: options.tagId,
         inputArtifacts: options.inputArtifacts,

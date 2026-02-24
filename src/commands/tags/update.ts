@@ -5,24 +5,13 @@ import { parsePositiveInteger } from "@/commands/shared";
 import { normalizeTagName } from "./shared";
 
 type UpdateTagValues = {
-  id?: string;
-  name?: string;
+  id: number;
+  name: string;
 };
 
 export async function runTagUpdateCommand(db: DbClient, values: UpdateTagValues): Promise<string> {
-  const idRaw = values.id?.trim();
-  const nameRaw = values.name?.trim();
-
-  if (!idRaw) {
-    throw new Error("Missing required --id option");
-  }
-
-  if (!nameRaw) {
-    throw new Error("Missing required --name option");
-  }
-
-  const id = parsePositiveInteger(idRaw, "--id");
-  const name = normalizeTagName(nameRaw);
+  const id = parsePositiveInteger(values.id, "--id");
+  const name = normalizeTagName(values.name.trim());
 
   const updated = await updateTag(db, id, { name });
   if (!updated) {
@@ -35,8 +24,8 @@ export async function runTagUpdateCommand(db: DbClient, values: UpdateTagValues)
 export function createTagUpdateCommand(db: DbClient) {
   return new Command()
     .description("Update tag name")
-    .option("--id <id:string>", "Tag ID")
-    .option("--name <name:string>", "New lowercase alphanumeric name")
+    .option("--id <id:integer>", "Tag ID", { required: true })
+    .option("--name <name:string>", "New lowercase alphanumeric name", { required: true })
     .action(async (options) => {
       const output = await runTagUpdateCommand(db, {
         id: options.id,

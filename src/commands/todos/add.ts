@@ -1,42 +1,47 @@
-import { Command } from "@cliffy/command";
+import { Command, EnumType } from "@cliffy/command";
 import { addTodo } from "@/db";
 import type { DbClient } from "@/db";
-import { parseDateString, parseIdsList, parsePriority, parseTodoStatus } from "@/commands/shared";
+import { parsePositiveInteger, parsePriority } from "@/commands/shared";
+import { dateYmdType, tagPathType } from "@/commands/types";
+
+type TodoStatus = "todo" | "in_progress" | "completed";
 
 type AddValues = {
   description?: string;
   tag?: string;
-  status?: string;
-  predecessors?: string;
-  priority?: string;
+  status: TodoStatus;
+  predecessors?: number[];
+  priority?: number;
   dueDate?: string;
   inputArtifacts?: string;
   outputArtifacts?: string;
   workNotes?: string;
 };
 
+const todoStatusType = new EnumType(["todo", "in_progress", "completed"] as const);
+
 export async function runAddCommand(db: DbClient, values: AddValues): Promise<string> {
   const description = values.description?.trim();
 
   if (!description) {
-    throw new Error("Missing required --description option");
+    throw new Error("Invalid --description. Provide non-empty text");
   }
 
-  const status = parseTodoStatus(values.status ?? "todo", "--status");
+  const status = values.status;
 
   let predecessorIds: number[] = [];
-  if (values.predecessors && values.predecessors.trim().length > 0) {
-    predecessorIds = parseIdsList(values.predecessors, "--predecessors");
+  if (values.predecessors !== undefined) {
+    predecessorIds = values.predecessors.map((id) => parsePositiveInteger(id, "--predecessors"));
   }
 
   let priority: number | undefined;
-  if (values.priority && values.priority.trim().length > 0) {
+  if (values.priority !== undefined) {
     priority = parsePriority(values.priority, "--priority");
   }
 
   let dueDate: string | undefined;
-  if (values.dueDate && values.dueDate.trim().length > 0) {
-    dueDate = parseDateString(values.dueDate, "--due-date");
+  if (values.dueDate !== undefined) {
+    dueDate = values.dueDate;
   }
 
   const added = await addTodo(db, {
@@ -60,16 +65,22 @@ export async function runAddCommand(db: DbClient, values: AddValues): Promise<st
 
 export function createTodoAddCommand(db: DbClient) {
   return new Command()
+    .type("todo-status", todoStatusType)
+    .type("tag-path", tagPathType)
+    .type("date-ymd", dateYmdType)
     .description("Add a todo")
-    .option("--description <description:string>", "Todo description")
-    .option("--tag <tag:string>", "Slash-separated tag path")
-    .option("--status <status:string>", "todo | in_progress | completed")
-    .option("--predecessors <predecessors:string>", "Comma-separated predecessor IDs")
+    .option("--description <description:string>", "Todo description", { required: true })
+    .option("--tag <tag:tag-path>", "Slash-separated tag path")
+    .option("--status <status:todo-status>", "Todo status", {
+      default: "todo",
+      defaultText: "todo"
+    })
+    .option("--predecessors <predecessors:integer[]>", "Comma-separated predecessor IDs")
     .option("--input-artifacts <value:string>", "Input artifacts")
     .option("--output-artifacts <value:string>", "Output artifacts")
     .option("--work-notes <value:string>", "Work notes")
-    .option("--priority <priority:string>", "Priority 1-5")
-    .option("--due-date <value:string>", "Due date YYYY-MM-DD")
+    .option("--priority <priority:integer>", "Priority 1-5")
+    .option("--due-date <value:date-ymd>", "Due date YYYY-MM-DD")
     .action(async (options) => {
       const output = await runAddCommand(db, {
         description: options.description,

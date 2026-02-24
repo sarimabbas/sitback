@@ -69,4 +69,28 @@ describe("cli todo update", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Use either --tag or --tag-id, not both");
   });
+
+  test("rejects non-integer --id via Cliffy type validation", () => {
+    const result = runCli(["todo", "update", "--id", "1.2", "--status", "todo"], configDir);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Option "--id" must be of type "integer", but got "1.2"');
+  });
+
+  test("clear-predecessors takes precedence over --predecessors", () => {
+    runCli(["todo", "add", "--description", "a", "--status", "in_progress"], configDir);
+    runCli(["todo", "add", "--description", "b", "--status", "in_progress"], configDir);
+    runCli(["todo", "add", "--description", "c", "--status", "todo", "--predecessors", "1"], configDir);
+
+    const updateResult = runCli(
+      ["todo", "update", "--id", "3", "--predecessors", "1,2", "--clear-predecessors"],
+      configDir
+    );
+
+    expect(updateResult.exitCode).toBe(0);
+
+    const fetched = runCli(["todo", "get", "--ids", "3"], configDir);
+    const rows = Bun.JSON5.parse(fetched.stdout) as Array<Record<string, unknown>>;
+    expect(rows[0]?.isBlocked).toBe(false);
+  });
 });

@@ -17,6 +17,19 @@
 - After updating the diagram, validate it by rendering with Mermaid CLI:
   - `bunx @mermaid-js/mermaid-cli -i docs/code-structure.md -o /tmp/sitback-code-structure.svg`
 
+## CLI/Cliffy conventions
+
+- Prefer Cliffy primitives over custom parsing/validation in action handlers.
+- Use option metadata first:
+  - `required: true` for mandatory options.
+  - `default` and `defaultText` for default behavior and help display.
+  - Built-in types (`boolean`, `integer`, `number`, `file`, `secret`) where applicable.
+  - List types (`<value:type[]>`) for comma-separated inputs (for example ID lists), instead of manual `split(",")` parsing.
+  - `EnumType`/custom `.type(...)` for constrained or structured value sets (for example formats/status values, date strings, slash paths).
+- Keep command handlers focused on domain rules that Cliffy cannot express (for example positive integer constraints, cross-option constraints, DB existence checks).
+- Avoid duplicating "missing required" or enum validation errors in handler code when Cliffy already guarantees them.
+- If parser defaults affect warning behavior, detect whether a flag was explicitly passed (for example via `this.getRawArgs()`) before emitting "ignored option" warnings.
+
 ## SQLite migration and trigger policy
 
 - Triggers do **not** need to be recreated for every migration.

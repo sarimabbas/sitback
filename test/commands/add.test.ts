@@ -19,8 +19,8 @@ describe("cli add", () => {
 
     const result = runCli(["todo", "add", "--status", "todo"], configDir);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Missing required --description option");
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Missing required option "--description"');
   });
 
   test("creates todo with metadata fields", () => {
@@ -59,5 +59,25 @@ describe("cli add", () => {
     expect(todo.inputArtifacts).toBe("logs/build.log");
     expect(todo.outputArtifacts).toBe("reports/build.md");
     expect(todo.workNotes).toBe("Investigate flaky step");
+  });
+
+  test("rejects invalid --due-date via custom type", () => {
+    const configDir = createTempConfigDir("sitback-cli-add-");
+    tempDirs.push(configDir);
+
+    const result = runCli(["todo", "add", "--description", "x", "--due-date", "2031/04/15"], configDir);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Option "--due-date" must use YYYY-MM-DD, but got "2031/04/15"');
+  });
+
+  test("rejects invalid --tag path via custom type", () => {
+    const configDir = createTempConfigDir("sitback-cli-add-");
+    tempDirs.push(configDir);
+
+    const result = runCli(["todo", "add", "--description", "x", "--tag", "work//api"], configDir);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Option "--tag" must be a slash-separated path with non-empty segments');
   });
 });

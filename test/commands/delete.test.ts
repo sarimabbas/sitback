@@ -15,8 +15,8 @@ describe("cli delete", () => {
   test("fails when --ids is missing", () => {
     const result = runCli(["todo", "delete"], configDir);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Missing required --ids option");
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Missing required option "--ids"');
   });
 
   test("deletes requested todos and unlinks children", () => {

@@ -4,18 +4,16 @@ import type { DbClient } from "@/db";
 import { parsePositiveInteger } from "@/commands/shared";
 
 type GetTagValues = {
-  id?: string;
+  id?: number;
 };
 
 export async function runTagGetCommand(db: DbClient, values: GetTagValues): Promise<string> {
-  const idRaw = values.id?.trim();
-
-  if (!idRaw) {
+  if (values.id === undefined) {
     const allSummary = await getAllTagsSummary(db);
     return Bun.JSON5.stringify(allSummary, null, 2) ?? "";
   }
 
-  const id = parsePositiveInteger(idRaw, "--id");
+  const id = parsePositiveInteger(values.id, "--id");
   const summary = await getTagSummary(db, id);
   if (!summary) {
     throw new Error(`Tag ${id} not found`);
@@ -27,7 +25,7 @@ export async function runTagGetCommand(db: DbClient, values: GetTagValues): Prom
 export function createTagGetCommand(db: DbClient) {
   return new Command()
     .description("Get tags")
-    .option("--id <id:string>", "Tag ID")
+    .option("--id <id:integer>", "Tag ID")
     .action(async (options) => {
       const output = await runTagGetCommand(db, {
         id: options.id

@@ -1,10 +1,12 @@
-import { Command } from "@cliffy/command";
+import { Command, EnumType } from "@cliffy/command";
 import { getExportTree } from "@/db";
 import type { DbClient, ExportTagNode, ExportTodoNode } from "@/db";
 
 type ExportValues = {
-  format?: string;
+  format: "json5" | "markdown";
 };
+
+const exportFormatType = new EnumType(["json5", "markdown"] as const);
 
 function renderTagMarkdown(nodes: ExportTagNode[], depth = 0): string {
   const prefix = "  ".repeat(depth);
@@ -46,11 +48,7 @@ function toMarkdown(payload: { tagTree: ExportTagNode[]; todoTree: ExportTodoNod
 }
 
 export async function runExportCommand(db: DbClient, values: ExportValues): Promise<string> {
-  const format = values.format ?? "json5";
-
-  if (format !== "json5" && format !== "markdown") {
-    throw new Error("Unsupported format. Use --format json5 or --format markdown");
-  }
+  const format = values.format;
 
   const payload = await getExportTree(db);
   return format === "json5" ? (Bun.JSON5.stringify(payload, null, 2) ?? "") : toMarkdown(payload);
@@ -58,8 +56,12 @@ export async function runExportCommand(db: DbClient, values: ExportValues): Prom
 
 export function createExportCommand(db: DbClient) {
   return new Command()
+    .type("export-format", exportFormatType)
     .description("Export tag and todo trees")
-    .option("--format <format:string>", "json5 | markdown")
+    .option("--format <format:export-format>", "Export format", {
+      default: "json5",
+      defaultText: "json5"
+    })
     .action(async (options) => {
       const output = await runExportCommand(db, {
         format: options.format

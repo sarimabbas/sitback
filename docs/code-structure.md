@@ -27,7 +27,8 @@ flowchart TD
     CmdTagDelete[runTagDeleteCommand]
     CmdExport[runExportCommand]
     CmdInit[runInitCommand]
-    CmdShared[parsePositiveInteger / parseIdsList / parseDateString / parsePriority / parseBooleanString]
+    CmdShared[parsePositiveInteger / parsePriority]
+    CmdTypes[dateYmdType / tagPathType]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
   end
 
@@ -135,9 +136,13 @@ flowchart TD
   SAppend --> Migrations
 
   CmdAdd --> CmdShared
+  CmdAdd --> CmdTypes
   CmdUpdate --> CmdShared
+  CmdUpdate --> CmdTypes
   CmdDelete --> CmdShared
   CmdGet --> CmdShared
+  CmdGet --> CmdTypes
+  CmdTagAdd --> CmdTypes
   CmdTagGet --> CmdShared
   CmdTagUpdate --> CmdShared
   CmdTagDelete --> CmdShared
@@ -218,6 +223,7 @@ flowchart TD
 - `sb init` is the explicit migration entrypoint; normal command execution checks migration state first.
 - Commands are grouped by domain under `src/commands/todos/*`, `src/commands/tags/*`, and `src/commands/export/*`.
 - Shared CLI option parsing/validation is centralized in `src/commands/shared.ts`.
+- Cliffy option primitives (`required`, `default`, built-in types, and enum/custom types) are preferred for CLI parsing and help metadata, with `shared.ts` reserved for domain-specific validators.
 - Scheduling behavior is centralized in `compareTodosForScheduling` and reused by `getNextTodos`/`getTodosForGet`.
 - Todo blocked-state selection is centralized in `todosWithBlockedSelection` and reused by `getTodoById`/`getTodos`/`getTodosByIds`/`getTodosForGet`.
 - Tag path upsert is centralized in `ensureTagPath` and reused by `addTodo`.

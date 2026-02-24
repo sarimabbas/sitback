@@ -54,6 +54,16 @@ describe("cli get", () => {
     expect(todos[1]?.id).toBe(1);
   });
 
+  test("does not warn about --num when only default is applied", () => {
+    runCli(["todo", "add", "--description", "first", "--status", "todo"], configDir);
+    runCli(["todo", "add", "--description", "second", "--status", "todo"], configDir);
+
+    const result = runCli(["todo", "get", "--ids", "2,1"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).not.toContain("Warning: --num is ignored when --ids is provided");
+  });
+
   test("applies blocked and min-priority filters", () => {
     runCli(["todo", "add", "--description", "blocker", "--status", "in_progress"], configDir);
     runCli(
@@ -123,5 +133,19 @@ describe("cli get", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Use either --tag or --tag-id, not both");
+  });
+
+  test("rejects non-integer --num via Cliffy type validation", () => {
+    const result = runCli(["todo", "get", "--num", "abc"], configDir);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Option "--num" must be of type "integer", but got "abc"');
+  });
+
+  test("rejects invalid --due-before via custom type", () => {
+    const result = runCli(["todo", "get", "--due-before", "2030/01/01"], configDir);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('Option "--due-before" must use YYYY-MM-DD, but got "2030/01/01"');
   });
 });

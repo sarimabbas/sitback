@@ -24,6 +24,17 @@ describe("cli tag", () => {
     expect(secondAdded.id).toBe(added.id);
   });
 
+  test("tag add normalizes uppercase path segments", () => {
+    const result = runCli(["tag", "add", "--path", "Work/Backend"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    const added = Bun.JSON5.parse(result.stdout) as Record<string, unknown>;
+    expect(added.name).toBe("backend");
+
+    const fetched = runCli(["tag", "get", "--id", String(added.id)], configDir);
+    expect(fetched.exitCode).toBe(0);
+  });
+
   test("tag update renames by id", () => {
     const addResult = runCli(["tag", "add", "--path", "ops/platform"], configDir);
     const added = Bun.JSON5.parse(addResult.stdout) as Record<string, unknown>;

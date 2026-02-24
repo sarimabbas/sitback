@@ -4,16 +4,11 @@ import type { DbClient } from "@/db";
 import { parsePositiveInteger } from "@/commands/shared";
 
 type DeleteTagValues = {
-  id?: string;
+  id: number;
 };
 
 export async function runTagDeleteCommand(db: DbClient, values: DeleteTagValues): Promise<string> {
-  const idRaw = values.id?.trim();
-  if (!idRaw) {
-    throw new Error("Missing required --id option");
-  }
-
-  const id = parsePositiveInteger(idRaw, "--id");
+  const id = parsePositiveInteger(values.id, "--id");
   const tag = await getTagById(db, id);
   if (!tag) {
     throw new Error(`Tag ${id} not found`);
@@ -36,7 +31,7 @@ export async function runTagDeleteCommand(db: DbClient, values: DeleteTagValues)
 export function createTagDeleteCommand(db: DbClient) {
   return new Command()
     .description("Delete a tag")
-    .option("--id <id:string>", "Tag ID")
+    .option("--id <id:integer>", "Tag ID", { required: true })
     .action(async (options) => {
       const output = await runTagDeleteCommand(db, {
         id: options.id
