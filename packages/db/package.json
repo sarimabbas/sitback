@@ -1,0 +1,21 @@
+{
+  "name": "@sitback/db",
+  "module": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./queries": "./src/queries/index.ts",
+    "./schema": "./src/schema.ts",
+    "./pragmas": "./src/pragmas.ts"
+  },
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@sitback/utils": "workspace:*"
+  }
+}

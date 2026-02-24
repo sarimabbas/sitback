@@ -1,0 +1,21 @@
+{
+  "name": "@sitback/cli",
+  "module": "./src/index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@sitback/db": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build:bin": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/sb",
+    "test": "bun test",
+    "lint": "bunx tsc --noEmit"
+  }
+}
