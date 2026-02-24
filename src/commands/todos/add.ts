@@ -13,8 +13,6 @@ type AddValues = {
   predecessors?: number[];
   priority?: number;
   dueDate?: string;
-  inputArtifacts?: string;
-  outputArtifacts?: string;
   workNotes?: string;
 };
 
@@ -49,8 +47,6 @@ export async function runAddCommand(db: DbClient, values: AddValues): Promise<st
     tagPath: values.tag,
     status,
     predecessorIds,
-    inputArtifacts: values.inputArtifacts?.trim() || undefined,
-    outputArtifacts: values.outputArtifacts?.trim() || undefined,
     workNotes: values.workNotes?.trim() || undefined,
     priority,
     dueDate
@@ -76,8 +72,6 @@ export function createTodoAddCommand(db: DbClient) {
       defaultText: "todo"
     })
     .option("--predecessors <predecessors:integer[]>", "Comma-separated predecessor IDs")
-    .option("--input-artifacts <value:string>", "Input artifacts")
-    .option("--output-artifacts <value:string>", "Output artifacts")
     .option("--work-notes <value:string>", "Work notes")
     .option("--priority <priority:integer>", "Priority 1-5")
     .option("--due-date <value:date-ymd>", "Due date YYYY-MM-DD")
@@ -87,8 +81,6 @@ export function createTodoAddCommand(db: DbClient) {
         tag: options.tag,
         status: options.status,
         predecessors: options.predecessors,
-        inputArtifacts: options.inputArtifacts,
-        outputArtifacts: options.outputArtifacts,
         workNotes: options.workNotes,
         priority: options.priority,
         dueDate: options.dueDate

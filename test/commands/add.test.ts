@@ -39,10 +39,6 @@ describe("cli add", () => {
         "2",
         "--due-date",
         "2031-04-15",
-        "--input-artifacts",
-        "logs/build.log",
-        "--output-artifacts",
-        "reports/build.md",
         "--work-notes",
         "Investigate flaky step"
       ],
@@ -56,8 +52,6 @@ describe("cli add", () => {
     expect(todo.status).toBe("todo");
     expect(todo.priority).toBe(2);
     expect(todo.dueDate).toBe("2031-04-15");
-    expect(todo.inputArtifacts).toBe("logs/build.log");
-    expect(todo.outputArtifacts).toBe("reports/build.md");
     expect(todo.workNotes).toBe("Investigate flaky step");
   });
 

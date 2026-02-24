@@ -15,8 +15,6 @@ type TodoRowWithBlocked = {
   description: string;
   tagId: number | null;
   status: "todo" | "in_progress" | "completed";
-  inputArtifacts: string | null;
-  outputArtifacts: string | null;
   workNotes: string | null;
   priority: number | null;
   dueDate: string | null;
@@ -59,8 +57,6 @@ function todosWithBlockedSelection() {
     description: todosTable.description,
     tagId: todosTable.tagId,
     status: todosTable.status,
-    inputArtifacts: todosTable.inputArtifacts,
-    outputArtifacts: todosTable.outputArtifacts,
     workNotes: todosTable.workNotes,
     priority: todosTable.priority,
     dueDate: todosTable.dueDate,
@@ -223,8 +219,6 @@ export async function addTodo(
     status?: "todo" | "in_progress" | "completed";
     tagPath?: string;
     predecessorIds?: number[];
-    inputArtifacts?: string;
-    outputArtifacts?: string;
     workNotes?: string;
     priority?: number;
     dueDate?: string;
@@ -236,8 +230,6 @@ export async function addTodo(
     description: input.description,
     status: input.status ?? "todo",
     tagId: resolvedTag?.id,
-    inputArtifacts: input.inputArtifacts,
-    outputArtifacts: input.outputArtifacts,
     workNotes: input.workNotes,
     priority: input.priority,
     dueDate: input.dueDate

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "04a9dcdd-86a4-4362-a178-874b2c07fee0",
+  "id": "611fc552-a6b1-46f5-8eb1-f3d89d9de88e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "tags": {
@@ -174,20 +174,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'todo'"
-        },
-        "input_artifacts": {
-          "name": "input_artifacts",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "output_artifacts": {
-          "name": "output_artifacts",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "work_notes": {
           "name": "work_notes",

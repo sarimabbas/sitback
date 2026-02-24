@@ -6,7 +6,7 @@ export type TodoInsert = typeof todosTable.$inferInsert;
 export type TodoUpdate = Partial<
   Pick<
     TodoInsert,
-    "description" | "status" | "tagId" | "inputArtifacts" | "outputArtifacts" | "workNotes" | "priority" | "dueDate"
+    "description" | "status" | "tagId" | "workNotes" | "priority" | "dueDate"
   >
 >;
 export type TagInsert = typeof tagsTable.$inferInsert;
@@ -24,8 +24,6 @@ export type ExportTodoNode = {
   description: string;
   status: "todo" | "in_progress" | "completed";
   tagId: number | null;
-  inputArtifacts: string | null;
-  outputArtifacts: string | null;
   workNotes: string | null;
   priority: number | null;
   dueDate: string | null;

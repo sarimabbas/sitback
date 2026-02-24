@@ -50,9 +50,7 @@ for url in "${urls[@]}"; do
     --description "Research and summarize ${url}" \
     --tag "research/papers/map" \
     --status todo \
-    --priority 4 \
-    --input-artifacts "${url}" \
-    --output-artifacts "notes/$(basename "${url}").md")"
+    --priority 4)"
 
   # extract created todo id from JSON5 output
   id="$(printf '%s\n' "$result" | rg '^\s*id:' | head -n1 | sed -E 's/[^0-9]*([0-9]+).*/\1/')"
@@ -68,7 +66,6 @@ sb todo add \
   --status todo \
   --priority 5 \
   --work-notes "Wait until all map tasks are completed" \
-  --output-artifacts "reports/paper-synthesis.md" \
   --predecessors "$preds"
 
 # 3) ask for next actionable work

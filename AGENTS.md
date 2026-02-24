@@ -12,7 +12,7 @@
 - Prefer Bun-native APIs when practical (`Bun.serve`, `Bun.file`, Bun SQL/Redis APIs).
 - Keep TypeScript strict; run `bun run lint` and `bun run test` for verification.
 - Useful manual CLI smoke test for add command:
-  - `SITBACK_CONFIG_DIR="/tmp/sitback-add-extra" bun run src/index.ts todo add --description "compile report" --status todo --priority 2 --due-date 2031-04-15 --input-artifacts "logs/build.log" --output-artifacts "reports/build.md" --work-notes "Investigate flaky step"`
+  - `SITBACK_CONFIG_DIR="/tmp/sitback-add-extra" bun run src/index.ts todo add --description "compile report" --status todo --priority 2 --due-date 2031-04-15 --work-notes "Investigate flaky step"`
 - Keep `docs/code-structure.md` in sync whenever functions are added, removed, renamed, or moved.
 - After updating the diagram, validate it by rendering with Mermaid CLI:
   - `bunx @mermaid-js/mermaid-cli -i docs/code-structure.md -o /tmp/sitback-code-structure.svg`

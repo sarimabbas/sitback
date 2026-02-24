@@ -81,8 +81,6 @@ describe("db schema", () => {
     const created = await createTodo(db, {
       description: "ship-crud",
       status: "todo",
-      inputArtifacts: "README.md",
-      outputArtifacts: "dist/sb",
       workNotes: "Initial draft",
       priority: 3,
       dueDate: "2030-01-01"
@@ -108,8 +106,6 @@ describe("db schema", () => {
     const fetchedTodo = requireValue(fetched, "Expected fetched todo row");
 
     expect(fetchedTodo.id).toBe(createdTodo.id);
-    expect(fetchedTodo.inputArtifacts).toBe("README.md");
-    expect(fetchedTodo.outputArtifacts).toBe("dist/sb");
     expect(fetchedTodo.dueDate).toBe("2030-01-01");
 
     await Bun.sleep(1100);
@@ -327,8 +323,6 @@ describe("db schema", () => {
         status: "todo",
         tagPath: "work/backend",
         predecessorIds: [predecessorA.id, predecessorB.id],
-        inputArtifacts: "logs/map.txt",
-        outputArtifacts: "reports/reduce.md",
         workNotes: "Need to verify reducer output",
         priority: 2,
         dueDate: "2030-01-01"
@@ -340,8 +334,6 @@ describe("db schema", () => {
     expect(added.status).toBe("todo");
     expect(added.isBlocked).toBe(true);
     expect(added.tagId).toBeDefined();
-    expect(added.inputArtifacts).toBe("logs/map.txt");
-    expect(added.outputArtifacts).toBe("reports/reduce.md");
     expect(added.workNotes).toBe("Need to verify reducer output");
     expect(added.priority).toBe(2);
     expect(added.dueDate).toBe("2030-01-01");

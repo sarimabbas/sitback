@@ -14,8 +14,6 @@ type UpdateValues = {
   clearPredecessors?: boolean;
   tag?: string;
   tagId?: number;
-  inputArtifacts?: string;
-  outputArtifacts?: string;
   workNotes?: string;
   priority?: number;
   dueDate?: string;
@@ -69,8 +67,6 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
     description?: string;
     status?: "todo" | "in_progress" | "completed";
     tagId?: number;
-    inputArtifacts?: string;
-    outputArtifacts?: string;
     workNotes?: string;
     priority?: number;
     dueDate?: string;
@@ -90,14 +86,6 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
 
   if (resolvedTagId !== undefined) {
     changes.tagId = resolvedTagId;
-  }
-
-  if (values.inputArtifacts !== undefined) {
-    changes.inputArtifacts = values.inputArtifacts.trim();
-  }
-
-  if (values.outputArtifacts !== undefined) {
-    changes.outputArtifacts = values.outputArtifacts.trim();
   }
 
   if (values.workNotes !== undefined) {
@@ -142,8 +130,6 @@ export function createTodoUpdateCommand(db: DbClient) {
     .option("--clear-predecessors", "Clear predecessor IDs (takes precedence over --predecessors)")
     .option("--tag <tag:tag-path>", "Slash-separated tag path")
     .option("--tag-id <value:integer>", "Tag ID")
-    .option("--input-artifacts <value:string>", "Input artifacts")
-    .option("--output-artifacts <value:string>", "Output artifacts")
     .option("--work-notes <value:string>", "Work notes")
     .option("--priority <priority:integer>", "Priority 1-5")
     .option("--due-date <value:date-ymd>", "Due date YYYY-MM-DD")
@@ -156,8 +142,6 @@ export function createTodoUpdateCommand(db: DbClient) {
         clearPredecessors: options.clearPredecessors,
         tag: options.tag,
         tagId: options.tagId,
-        inputArtifacts: options.inputArtifacts,
-        outputArtifacts: options.outputArtifacts,
         workNotes: options.workNotes,
         priority: options.priority,
         dueDate: options.dueDate
