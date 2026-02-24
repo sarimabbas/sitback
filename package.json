@@ -6,29 +6,10 @@
   "workspaces": [
     "packages/*"
   ],
-  "devDependencies": {
-    "@types/bun": "latest",
-    "drizzle-kit": "^0.31.9",
-    "tsx": "^4.21.0"
-  },
   "peerDependencies": {
     "typescript": "^5"
   },
-  "scripts": {
-    "db:push": "bunx drizzle-kit push",
-    "db:generate": "bunx drizzle-kit generate",
-    "db:generate:custom": "bunx drizzle-kit generate --custom",
-    "db:migrate": "bunx drizzle-kit migrate",
-    "db:squash": "bun run scripts/db-squash.ts",
-    "db:studio": "bunx drizzle-kit studio"
-  },
   "bin": {
     "sb": "src/index.ts"
-  },
-  "dependencies": {
-    "@cliffy/command": "npm:@jsr/cliffy__command",
-    "@libsql/client": "^0.17.0",
-    "dotenv": "^17.3.1",
-    "drizzle-orm": "^0.45.1"
   }
 }
