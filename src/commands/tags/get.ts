@@ -29,15 +29,9 @@ export function createTagGetCommand(db: DbClient) {
     .description("Get tags")
     .option("--id <id:string>", "Tag ID")
     .action(async (options) => {
-      try {
-        const output = await runTagGetCommand(db, {
-          id: options.id
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown tag get error";
-        console.error(`Tag get failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runTagGetCommand(db, {
+        id: options.id
+      });
+      console.log(output);
     });
 }

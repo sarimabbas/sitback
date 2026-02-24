@@ -61,16 +61,9 @@ export function createExportCommand(db: DbClient) {
     .description("Export tag and todo trees")
     .option("--format <format:string>", "json5 | markdown")
     .action(async (options) => {
-      try {
-        const output = await runExportCommand(db, {
-          format: options.format
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown export command error";
-        console.error(`Export failed: ${message}`);
-        console.error("Run `bun run db:migrate` first to initialize the database schema.");
-        process.exit(1);
-      }
+      const output = await runExportCommand(db, {
+        format: options.format
+      });
+      console.log(output);
     });
 }

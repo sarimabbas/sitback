@@ -21,15 +21,9 @@ export function createTagAddCommand(db: DbClient) {
     .description("Add a tag path")
     .option("--path <path:string>", "Slash-separated tag path")
     .action(async (options) => {
-      try {
-        const output = await runTagAddCommand(db, {
-          path: options.path
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown tag add error";
-        console.error(`Tag add failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runTagAddCommand(db, {
+        path: options.path
+      });
+      console.log(output);
     });
 }

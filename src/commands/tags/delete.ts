@@ -38,15 +38,9 @@ export function createTagDeleteCommand(db: DbClient) {
     .description("Delete a tag")
     .option("--id <id:string>", "Tag ID")
     .action(async (options) => {
-      try {
-        const output = await runTagDeleteCommand(db, {
-          id: options.id
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown tag delete error";
-        console.error(`Tag delete failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runTagDeleteCommand(db, {
+        id: options.id
+      });
+      console.log(output);
     });
 }

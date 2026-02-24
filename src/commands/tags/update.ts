@@ -38,16 +38,10 @@ export function createTagUpdateCommand(db: DbClient) {
     .option("--id <id:string>", "Tag ID")
     .option("--name <name:string>", "New lowercase alphanumeric name")
     .action(async (options) => {
-      try {
-        const output = await runTagUpdateCommand(db, {
-          id: options.id,
-          name: options.name
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown tag update error";
-        console.error(`Tag update failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runTagUpdateCommand(db, {
+        id: options.id,
+        name: options.name
+      });
+      console.log(output);
     });
 }

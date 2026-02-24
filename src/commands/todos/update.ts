@@ -164,25 +164,19 @@ export function createTodoUpdateCommand(db: DbClient) {
     .option("--priority <priority:string>", "Priority 1-5")
     .option("--due-date <value:string>", "Due date YYYY-MM-DD")
     .action(async (options) => {
-      try {
-        const output = await runUpdateCommand(db, {
-          id: options.id,
-          description: options.description,
-          status: options.status,
-          predecessors: options.predecessors,
-          tag: options.tag,
-          tagId: options.tagId,
-          inputArtifacts: options.inputArtifacts,
-          outputArtifacts: options.outputArtifacts,
-          workNotes: options.workNotes,
-          priority: options.priority,
-          dueDate: options.dueDate
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown todo update error";
-        console.error(`Todo update failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runUpdateCommand(db, {
+        id: options.id,
+        description: options.description,
+        status: options.status,
+        predecessors: options.predecessors,
+        tag: options.tag,
+        tagId: options.tagId,
+        inputArtifacts: options.inputArtifacts,
+        outputArtifacts: options.outputArtifacts,
+        workNotes: options.workNotes,
+        priority: options.priority,
+        dueDate: options.dueDate
+      });
+      console.log(output);
     });
 }

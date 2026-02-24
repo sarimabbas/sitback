@@ -135,27 +135,21 @@ export function createTodoGetCommand(db: DbClient) {
     .option("--tag <tag:string>", "Filter by slash tag path")
     .option("--tag-id <value:string>", "Filter by tag ID")
     .action(async (options) => {
-      try {
-        const result = await runGetCommand(db, {
-          ids: options.ids,
-          num: options.num,
-          blocked: options.blocked,
-          minPriority: options.minPriority,
-          dueBefore: options.dueBefore,
-          dueAfter: options.dueAfter,
-          tag: options.tag,
-          tagId: options.tagId
-        });
+      const result = await runGetCommand(db, {
+        ids: options.ids,
+        num: options.num,
+        blocked: options.blocked,
+        minPriority: options.minPriority,
+        dueBefore: options.dueBefore,
+        dueAfter: options.dueAfter,
+        tag: options.tag,
+        tagId: options.tagId
+      });
 
-        for (const warning of result.warnings) {
-          console.error(warning);
-        }
-
-        console.log(result.output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown todo get error";
-        console.error(`Todo get failed: ${message}`);
-        process.exit(1);
+      for (const warning of result.warnings) {
+        console.error(warning);
       }
+
+      console.log(result.output);
     });
 }

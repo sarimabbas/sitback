@@ -71,23 +71,17 @@ export function createTodoAddCommand(db: DbClient) {
     .option("--priority <priority:string>", "Priority 1-5")
     .option("--due-date <value:string>", "Due date YYYY-MM-DD")
     .action(async (options) => {
-      try {
-        const output = await runAddCommand(db, {
-          description: options.description,
-          tag: options.tag,
-          status: options.status,
-          predecessors: options.predecessors,
-          inputArtifacts: options.inputArtifacts,
-          outputArtifacts: options.outputArtifacts,
-          workNotes: options.workNotes,
-          priority: options.priority,
-          dueDate: options.dueDate
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown todo add error";
-        console.error(`Todo add failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runAddCommand(db, {
+        description: options.description,
+        tag: options.tag,
+        status: options.status,
+        predecessors: options.predecessors,
+        inputArtifacts: options.inputArtifacts,
+        outputArtifacts: options.outputArtifacts,
+        workNotes: options.workNotes,
+        priority: options.priority,
+        dueDate: options.dueDate
+      });
+      console.log(output);
     });
 }

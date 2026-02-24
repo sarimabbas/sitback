@@ -42,15 +42,9 @@ export function createTodoDeleteCommand(db: DbClient) {
     .description("Delete todos")
     .option("--ids <ids:string>", "Comma-separated todo IDs")
     .action(async (options) => {
-      try {
-        const output = await runDeleteCommand(db, {
-          ids: options.ids
-        });
-        console.log(output);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown todo delete error";
-        console.error(`Todo delete failed: ${message}`);
-        process.exit(1);
-      }
+      const output = await runDeleteCommand(db, {
+        ids: options.ids
+      });
+      console.log(output);
     });
 }
