@@ -28,6 +28,7 @@
     "sb": "src/index.ts"
   },
   "dependencies": {
+    "@cliffy/command": "npm:@jsr/cliffy__command",
     "@libsql/client": "^0.17.0",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1"
