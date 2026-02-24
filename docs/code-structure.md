@@ -4,18 +4,24 @@
 flowchart TD
   subgraph CLI[src/index.ts]
     CInit[initializeDatabase]
-    CHelp[printHelp]
-    CTodoCmd[dispatch todo subcommands]
-    CTagCmd[dispatch tag]
-    CExportCmd[dispatch export]
+    CRoot[build root Command + parse]
+    CTodo[createTodoCommand]
+    CTag[createTagCommand]
+    CExport[createExportCommand]
   end
 
   subgraph Commands[src/commands/*]
+    CmdTodoShell[src/commands/todos/command.ts]
+    CmdTagShell[src/commands/tags/command.ts]
+    CmdExportShell[src/commands/export/command.ts]
     CmdAdd[runAddCommand]
     CmdDelete[runDeleteCommand]
     CmdUpdate[runUpdateCommand]
     CmdGet[runGetCommand]
-    CmdTag[runTagCommand add/get/update/delete]
+    CmdTagAdd[runTagAddCommand]
+    CmdTagGet[runTagGetCommand]
+    CmdTagUpdate[runTagUpdateCommand]
+    CmdTagDelete[runTagDeleteCommand]
     CmdExport[runExportCommand]
     CmdShared[parsePositiveInteger / parseIdsList / parseDateString / parsePriority / parseBooleanString]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
@@ -92,6 +98,22 @@ flowchart TD
   Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/update.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
 
   CInit --> DInit
+  CRoot --> CTodo
+  CRoot --> CTag
+  CRoot --> CExport
+  CTodo --> CmdTodoShell
+  CTag --> CmdTagShell
+  CExport --> CmdExportShell
+  CmdTodoShell --> CmdAdd
+  CmdTodoShell --> CmdGet
+  CmdTodoShell --> CmdUpdate
+  CmdTodoShell --> CmdDelete
+  CmdTagShell --> CmdTagAdd
+  CmdTagShell --> CmdTagGet
+  CmdTagShell --> CmdTagUpdate
+  CmdTagShell --> CmdTagDelete
+  CmdExportShell --> CmdExport
+
   DInit --> DEnsure
   DInit --> DPragma
   DInit --> DRunMig
@@ -102,18 +124,13 @@ flowchart TD
   SAppend --> SMigrate
   SAppend --> Migrations
 
-  CTodoCmd --> CmdAdd
-  CTodoCmd --> CmdUpdate
-  CTodoCmd --> CmdDelete
-  CTodoCmd --> CmdGet
-  CTagCmd --> CmdTag
-  CExportCmd --> CmdExport
-
   CmdAdd --> CmdShared
   CmdUpdate --> CmdShared
   CmdDelete --> CmdShared
   CmdGet --> CmdShared
-  CmdTag --> CmdShared
+  CmdTagGet --> CmdShared
+  CmdTagUpdate --> CmdShared
+  CmdTagDelete --> CmdShared
   CmdExport --> CmdMarkdown
 
   CmdAdd --> QTAdd
@@ -122,11 +139,12 @@ flowchart TD
   CmdUpdate --> QGResolve
   CmdUpdate --> QGById
   CmdDelete --> QTDelete
-  CmdTag --> QGPath
-  CmdTag --> QGAllSummary
-  CmdTag --> QGSummary
-  CmdTag --> QGUpdate
-  CmdTag --> QGDelete
+  CmdTagAdd --> QGPath
+  CmdTagGet --> QGAllSummary
+  CmdTagGet --> QGSummary
+  CmdTagUpdate --> QGUpdate
+  CmdTagDelete --> QGDelete
+  CmdTagDelete --> QGById
   QTAdd --> QTCreate
   QTAdd --> QTGetById
   QTAdd --> QDAdd
@@ -185,7 +203,8 @@ flowchart TD
 
 ## Notes
 
-- CLI orchestration/dispatch lives in `src/index.ts`; command-specific logic is split under `src/commands/*`.
+- Cliffy root setup and parse flow live directly in `src/index.ts`.
+- Commands are grouped by domain under `src/commands/todos/*`, `src/commands/tags/*`, and `src/commands/export/*`.
 - Shared CLI option parsing/validation is centralized in `src/commands/shared.ts`.
 - Scheduling behavior is centralized in `compareTodosForScheduling` and reused by `getNextTodos`/`getTodosForGet`.
 - Todo blocked-state selection is centralized in `todosWithBlockedSelection` and reused by `getTodoById`/`getTodos`/`getTodosByIds`/`getTodosForGet`.

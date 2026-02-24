@@ -1,3 +1,4 @@
+import { Command } from "@cliffy/command";
 import { getExportTree } from "@/db";
 import type { DbClient, ExportTagNode, ExportTodoNode } from "@/db";
 
@@ -53,4 +54,23 @@ export async function runExportCommand(db: DbClient, values: ExportValues): Prom
 
   const payload = await getExportTree(db);
   return format === "json5" ? (Bun.JSON5.stringify(payload, null, 2) ?? "") : toMarkdown(payload);
+}
+
+export function createExportCommand(db: DbClient) {
+  return new Command()
+    .description("Export tag and todo trees")
+    .option("--format <format:string>", "json5 | markdown")
+    .action(async (options) => {
+      try {
+        const output = await runExportCommand(db, {
+          format: options.format
+        });
+        console.log(output);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown export command error";
+        console.error(`Export failed: ${message}`);
+        console.error("Run `bun run db:migrate` first to initialize the database schema.");
+        process.exit(1);
+      }
+    });
 }

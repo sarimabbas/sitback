@@ -1,6 +1,13 @@
+import { Command } from "@cliffy/command";
 import { getTagById, getTodosByIds, getTodosForGet, resolveTagPath } from "@/db";
 import type { DbClient } from "@/db";
-import { parseBooleanString, parseDateString, parseIdsList, parsePositiveInteger, parsePriority } from "./shared";
+import {
+  parseBooleanString,
+  parseDateString,
+  parseIdsList,
+  parsePositiveInteger,
+  parsePriority
+} from "@/commands/shared";
 
 type GetValues = {
   ids?: string;
@@ -114,4 +121,41 @@ export async function runGetCommand(
     output: Bun.JSON5.stringify(todos, null, 2) ?? "",
     warnings
   };
+}
+
+export function createTodoGetCommand(db: DbClient) {
+  return new Command()
+    .description("Get todos")
+    .option("--ids <ids:string>", "Comma-separated todo IDs")
+    .option("--num <num:string>", "Number of todos to return")
+    .option("--blocked <blocked:string>", "Filter by blocked state (true|false)")
+    .option("--min-priority <value:string>", "Minimum priority filter (1-5)")
+    .option("--due-before <value:string>", "Filter by due date upper bound")
+    .option("--due-after <value:string>", "Filter by due date lower bound")
+    .option("--tag <tag:string>", "Filter by slash tag path")
+    .option("--tag-id <value:string>", "Filter by tag ID")
+    .action(async (options) => {
+      try {
+        const result = await runGetCommand(db, {
+          ids: options.ids,
+          num: options.num,
+          blocked: options.blocked,
+          minPriority: options.minPriority,
+          dueBefore: options.dueBefore,
+          dueAfter: options.dueAfter,
+          tag: options.tag,
+          tagId: options.tagId
+        });
+
+        for (const warning of result.warnings) {
+          console.error(warning);
+        }
+
+        console.log(result.output);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown todo get error";
+        console.error(`Todo get failed: ${message}`);
+        process.exit(1);
+      }
+    });
 }

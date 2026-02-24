@@ -1,3 +1,4 @@
+import { Command } from "@cliffy/command";
 import { getTagById, resolveTagPath, updateTodoWithRelations } from "@/db";
 import type { DbClient } from "@/db";
 import {
@@ -6,7 +7,7 @@ import {
   parsePositiveInteger,
   parsePriority,
   parseTodoStatus
-} from "./shared";
+} from "@/commands/shared";
 
 type UpdateValues = {
   id?: string;
@@ -146,4 +147,42 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
   }
 
   return Bun.JSON5.stringify(updated, null, 2) ?? "";
+}
+
+export function createTodoUpdateCommand(db: DbClient) {
+  return new Command()
+    .description("Update a todo")
+    .option("--id <id:string>", "Todo ID")
+    .option("--description <description:string>", "Todo description")
+    .option("--status <status:string>", "todo | in_progress | completed")
+    .option("--predecessors <predecessors:string>", "Comma-separated predecessor IDs")
+    .option("--tag <tag:string>", "Slash-separated tag path")
+    .option("--tag-id <value:string>", "Tag ID")
+    .option("--input-artifacts <value:string>", "Input artifacts")
+    .option("--output-artifacts <value:string>", "Output artifacts")
+    .option("--work-notes <value:string>", "Work notes")
+    .option("--priority <priority:string>", "Priority 1-5")
+    .option("--due-date <value:string>", "Due date YYYY-MM-DD")
+    .action(async (options) => {
+      try {
+        const output = await runUpdateCommand(db, {
+          id: options.id,
+          description: options.description,
+          status: options.status,
+          predecessors: options.predecessors,
+          tag: options.tag,
+          tagId: options.tagId,
+          inputArtifacts: options.inputArtifacts,
+          outputArtifacts: options.outputArtifacts,
+          workNotes: options.workNotes,
+          priority: options.priority,
+          dueDate: options.dueDate
+        });
+        console.log(output);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown todo update error";
+        console.error(`Todo update failed: ${message}`);
+        process.exit(1);
+      }
+    });
 }
