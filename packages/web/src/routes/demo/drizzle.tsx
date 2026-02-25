@@ -1,15 +1,13 @@
+import { todosTable } from '@sitback/db/schema'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { db } from '#/db/index'
 import { desc } from 'drizzle-orm'
-import { todos } from '#/db/schema'
 
 const getTodos = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  return await db.query.todos.findMany({
-    orderBy: [desc(todos.createdAt)],
-  })
+  const { db } = await import('@sitback/db/web')
+  return await db.select().from(todosTable).orderBy(desc(todosTable.createdAt))
 })
 
 const createTodo = createServerFn({
@@ -17,7 +15,10 @@ const createTodo = createServerFn({
 })
   .inputValidator((data: { title: string }) => data)
   .handler(async ({ data }) => {
-    await db.insert(todos).values({ title: data.title })
+    const { db } = await import('@sitback/db/web')
+    await db
+      .insert(todosTable)
+      .values({ description: data.title, status: 'todo' })
     return { success: true }
   })
 
@@ -28,7 +29,7 @@ export const Route = createFileRoute('/demo/drizzle')({
 
 function DemoDrizzle() {
   const router = useRouter()
-  const todos = Route.useLoaderData()
+  const todos = Route.useLoaderData() as Array<{ id: number; description: string }>
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -100,7 +101,7 @@ function DemoDrizzle() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-lg font-medium text-white group-hover:text-indigo-200 transition-colors">
-                  {todo.title}
+                  {todo.description}
                 </span>
                 <span className="text-xs text-indigo-300/70">#{todo.id}</span>
               </div>
@@ -122,7 +123,6 @@ function DemoDrizzle() {
             style={{
               background: 'rgba(93, 103, 227, 0.1)',
               borderColor: 'rgba(93, 103, 227, 0.3)',
-              focusRing: 'rgba(93, 103, 227, 0.5)',
             }}
           />
           <button
@@ -148,34 +148,25 @@ function DemoDrizzle() {
             Powered by Drizzle ORM
           </h3>
           <p className="text-sm text-indigo-300/80 mb-4">
-            Next-generation ORM for Node.js & TypeScript with PostgreSQL
+            Shared SQLite database via @sitback/db
           </p>
           <div className="space-y-2 text-sm">
             <p className="text-indigo-200 font-medium">Setup Instructions:</p>
             <ol className="list-decimal list-inside space-y-2 text-indigo-300/80">
               <li>
-                Configure your{' '}
+                Initialize the shared DB with{' '}
                 <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  DATABASE_URL
+                  sb init
                 </code>{' '}
-                in .env.local
+                once before using this demo
               </li>
               <li>
-                Run:{' '}
-                <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  bunx --bun drizzle-kit generate
-                </code>
+                Add todos from the UI and they will be written to the same DB as the CLI
               </li>
               <li>
-                Run:{' '}
+                Optional: inspect data with{' '}
                 <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  bunx --bun drizzle-kit migrate
-                </code>
-              </li>
-              <li>
-                Optional:{' '}
-                <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  bunx --bun drizzle-kit studio
+                  sb todo get --num 5
                 </code>
               </li>
             </ol>

@@ -1,28 +1,28 @@
-import React from 'react'
+import { compareItems, rankItem } from '@tanstack/match-sorter-utils'
 import { createFileRoute } from '@tanstack/react-router'
 import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  sortingFns,
-  useReactTable,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    sortingFns,
+    useReactTable,
 } from '@tanstack/react-table'
-import { compareItems, rankItem } from '@tanstack/match-sorter-utils'
+import React from 'react'
 
-import { makeData } from '#/data/demo-table-data'
+import { makeData } from '@/data/demo-table-data'
 
-import type {
-  Column,
-  ColumnDef,
-  ColumnFiltersState,
-  FilterFn,
-  SortingFn,
-} from '@tanstack/react-table'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
+import type {
+    Column,
+    ColumnDef,
+    ColumnFiltersState,
+    FilterFn,
+    SortingFn,
+} from '@tanstack/react-table'
 
-import type { Person } from '#/data/demo-table-data'
+import type { Person } from '@/data/demo-table-data'
 
 export const Route = createFileRoute('/demo/table')({
   component: TableDemo,
