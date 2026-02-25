@@ -32,25 +32,21 @@ flowchart TD
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
   end
 
-  subgraph DBInit[src/db/index.ts + src/db/pragmas.ts]
+  subgraph DBBun[src/db/bun.ts + src/db/pragmas.ts]
     DEnsure[ensureConfigDir]
     DPragma[applySqlitePragmas]
-    DInit[initializeDatabase]
-    DAssert[assertDatabaseInitialized]
-    DRunMig[migrate with drizzle folder]
+    DBun[db bun-sqlite]
   end
 
   subgraph DBWeb[src/db/web.ts]
     DWDb[db better-sqlite3]
-    DWInit[initializeDatabase]
-    DWAssert[assertDatabaseInitialized]
-    DWRunMig[migrate with drizzle folder]
   end
 
-  subgraph DBRuntime[src/db/runtime.ts]
-    DRResolve[resolveMigrationsFolder]
-    DRCreate[createDatabaseRuntime]
-    DRExpected[getExpectedMigrationCount]
+  subgraph DBLifecycle[src/db/lifecycle.ts]
+    DLResolve[resolveMigrationsFolder]
+    DLInit[initializeDatabase]
+    DLRunMig[runMigrations]
+    DLAssert[assertDatabaseInitialized]
   end
 
   subgraph DevScripts[scripts/db-squash.ts]
@@ -116,8 +112,8 @@ flowchart TD
   Migrations[drizzle/*.sql\nDDL + constraints + triggers]
   Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/update.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
 
-  CInit --> DInit
-  CAssert --> DAssert
+  CInit --> DLInit
+  CAssert --> DLAssert
   CRoot --> CTodo
   CRoot --> CTag
   CRoot --> CExport
@@ -137,17 +133,12 @@ flowchart TD
   CmdExportShell --> CmdExport
   CmdInitShell --> CmdInit
 
-  DInit --> DPragma
-  DRunMig --> DRCreate
-  DAssert --> DRCreate
-  DWInit --> DPragma
-  DWRunMig --> DRCreate
-  DWAssert --> DRCreate
-  DRCreate --> DEnsure
-  DRCreate --> DRResolve
-  DRCreate --> DRExpected
-  CmdInit --> DRunMig
-  DRunMig --> Migrations
+  DLInit --> DPragma
+  DLInit --> DEnsure
+  DLRunMig --> DLResolve
+  DLAssert --> DLResolve
+  CmdInit --> DLRunMig
+  DLRunMig --> Migrations
 
   SSql --> SGen
   SGen --> SAppend
@@ -227,7 +218,7 @@ flowchart TD
   QBarrel --> QDeps
   QBarrel --> QExport
 
-  Tests --> DInit
+  Tests --> DLInit
   Tests --> CmdInit
   Tests --> QTodos
   Tests --> QTags
@@ -247,4 +238,4 @@ flowchart TD
 - Todo blocked-state selection is centralized in `todosWithBlockedSelection` and reused by `getTodoById`/`getTodos`/`getTodosByIds`/`getTodosForGet`.
 - Tag path upsert is centralized in `ensureTagPath` and reused by `addTodo`.
 - Migration SQL (`drizzle/*.sql`) is applied by `sb init` (via `runMigrations`), not by default command startup.
-- `@sitback/db` exposes two runtime entrypoints: `@sitback/db` (Bun SQLite for CLI/binary usage) and `@sitback/db/web` (better-sqlite3 for web server runtime).
+- `@sitback/db` exposes explicit runtime entrypoints: `@sitback/db/bun` (Bun SQLite for CLI/binary usage) and `@sitback/db/web` (better-sqlite3 for web server runtime), with shared lifecycle helpers in `@sitback/db/lifecycle`.

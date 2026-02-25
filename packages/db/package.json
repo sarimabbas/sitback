@@ -1,8 +1,10 @@
 {
   "name": "@sitback/db",
-  "module": "./src/index.ts",
+  "module": "./src/bun.ts",
   "exports": {
-    ".": "./src/index.ts",
+    "./bun": "./src/bun.ts",
+    "./web": "./src/web.ts",
+    "./lifecycle": "./src/lifecycle.ts",
     "./queries": "./src/queries/index.ts",
     "./schema": "./src/schema.ts",
     "./pragmas": "./src/pragmas.ts"
@@ -11,6 +13,7 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/better-sqlite3": "^7.6.0",
     "drizzle-kit": "^0.31.9"
   },
   "peerDependencies": {
@@ -18,6 +21,7 @@
   },
   "dependencies": {
     "@sitback/utils": "workspace:*",
+    "better-sqlite3": "^12.5.0",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1"
   },
