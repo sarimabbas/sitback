@@ -1,8 +1,9 @@
 import { Command } from "@cliffy/command";
-import { runMigrations } from "@sitback/db";
+import { db } from "@sitback/db/bun";
+import { runMigrations } from "@sitback/db/lifecycle";
 
 export async function runInitCommand(): Promise<string> {
-  await runMigrations();
+  await runMigrations(db);
   return "Database initialized.";
 }
 

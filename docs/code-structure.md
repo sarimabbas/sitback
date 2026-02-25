@@ -40,6 +40,19 @@ flowchart TD
     DRunMig[migrate with drizzle folder]
   end
 
+  subgraph DBWeb[src/db/web.ts]
+    DWDb[db better-sqlite3]
+    DWInit[initializeDatabase]
+    DWAssert[assertDatabaseInitialized]
+    DWRunMig[migrate with drizzle folder]
+  end
+
+  subgraph DBRuntime[src/db/runtime.ts]
+    DRResolve[resolveMigrationsFolder]
+    DRCreate[createDatabaseRuntime]
+    DRExpected[getExpectedMigrationCount]
+  end
+
   subgraph DevScripts[scripts/db-squash.ts]
     SSql[removeFilesInDirectory]
     SGen[drizzle-kit generate]
@@ -124,9 +137,15 @@ flowchart TD
   CmdExportShell --> CmdExport
   CmdInitShell --> CmdInit
 
-  DInit --> DEnsure
   DInit --> DPragma
-  DAssert --> DRunMig
+  DRunMig --> DRCreate
+  DAssert --> DRCreate
+  DWInit --> DPragma
+  DWRunMig --> DRCreate
+  DWAssert --> DRCreate
+  DRCreate --> DEnsure
+  DRCreate --> DRResolve
+  DRCreate --> DRExpected
   CmdInit --> DRunMig
   DRunMig --> Migrations
 
@@ -228,3 +247,4 @@ flowchart TD
 - Todo blocked-state selection is centralized in `todosWithBlockedSelection` and reused by `getTodoById`/`getTodos`/`getTodosByIds`/`getTodosForGet`.
 - Tag path upsert is centralized in `ensureTagPath` and reused by `addTodo`.
 - Migration SQL (`drizzle/*.sql`) is applied by `sb init` (via `runMigrations`), not by default command startup.
+- `@sitback/db` exposes two runtime entrypoints: `@sitback/db` (Bun SQLite for CLI/binary usage) and `@sitback/db/web` (better-sqlite3 for web server runtime).

@@ -1,6 +1,6 @@
 import { Command, EnumType } from "@cliffy/command";
-import { addTodo } from "@sitback/db";
-import type { DbClient } from "@sitback/db";
+import { addTodo } from "@sitback/db/queries";
+import type { DbClient } from "@sitback/db/queries";
 import { parsePositiveInteger, parsePriority } from "../shared";
 import { dateYmdType, tagPathType } from "../types";
 

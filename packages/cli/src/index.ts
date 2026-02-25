@@ -3,14 +3,14 @@ import { createExportCommand } from "@/export/command";
 import { createInitCommand } from "@/init/command";
 import { createTagCommand } from "@/tags/command";
 import { createTodoCommand } from "@/todos/command";
+import { db } from "@sitback/db/bun";
 import {
   assertDatabaseInitialized,
-  db,
   getDatabaseInitializationWarning,
   initializeDatabase
-} from "@sitback/db";
+} from "@sitback/db/lifecycle";
 
-await initializeDatabase();
+await initializeDatabase(db);
 
 const args = Bun.argv.slice(2);
 const commandName = args[0];
@@ -21,10 +21,10 @@ const isHelpRequest =
   args.length === 0 || args.includes("--help") || args.includes("-h") || commandName === "help";
 
 if (shouldCheckDatabase && !isHelpRequest) {
-  await assertDatabaseInitialized();
+  await assertDatabaseInitialized(db);
 }
 
-const databaseWarning = await getDatabaseInitializationWarning();
+const databaseWarning = await getDatabaseInitializationWarning(db);
 
 const root = new Command()
   .name("sb")

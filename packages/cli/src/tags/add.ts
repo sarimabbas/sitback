@@ -1,6 +1,6 @@
 import { Command } from "@cliffy/command";
-import { ensureTagPath } from "@sitback/db";
-import type { DbClient } from "@sitback/db";
+import { ensureTagPath } from "@sitback/db/queries";
+import type { DbClient } from "@sitback/db/queries";
 import { tagPathType } from "../types";
 
 type AddTagValues = {

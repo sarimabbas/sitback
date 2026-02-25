@@ -1,6 +1,6 @@
 import { Command } from "@cliffy/command";
-import { deleteTag, getTagById } from "@sitback/db";
-import type { DbClient } from "@sitback/db";
+import { deleteTag, getTagById } from "@sitback/db/queries";
+import type { DbClient } from "@sitback/db/queries";
 import { parsePositiveInteger } from "../shared";
 
 type DeleteTagValues = {
