@@ -1,14 +1,34 @@
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
-import { drizzle } from "drizzle-orm/libsql";
-import { migrate } from "drizzle-orm/libsql/migrator";
+import { existsSync, readFileSync } from "node:fs";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { dbDir, dbFilePath, ensureConfigDir } from "@sitback/utils";
 import { applySqlitePragmas } from "./pragmas";
 
 ensureConfigDir();
 
-export const db = drizzle({ connection: { url: `file:${dbFilePath}` } });
-const migrationsFolder = join(import.meta.dir, "..", "drizzle");
+export const db = drizzle(dbFilePath);
+
+function resolveMigrationsFolder(): string {
+  const bundled = join(import.meta.dir, "..", "drizzle");
+  if (existsSync(join(bundled, "meta", "_journal.json"))) {
+    return bundled;
+  }
+
+  const workspacePath = join(process.cwd(), "packages", "db", "drizzle");
+  if (existsSync(join(workspacePath, "meta", "_journal.json"))) {
+    return workspacePath;
+  }
+
+  const packagePath = join(process.cwd(), "drizzle");
+  if (existsSync(join(packagePath, "meta", "_journal.json"))) {
+    return packagePath;
+  }
+
+  return bundled;
+}
+
+const migrationsFolder = resolveMigrationsFolder();
 const migrationsJournalFile = join(migrationsFolder, "meta", "_journal.json");
 
 function getExpectedMigrationCount(): number {
@@ -31,7 +51,7 @@ export async function initializeDatabase(): Promise<void> {
 
 export async function runMigrations(): Promise<void> {
   try {
-    await migrate(db, { migrationsFolder });
+    migrate(db, { migrationsFolder });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const tableExistsConflict = /table\s+`?\w+`?\s+already exists/i.test(message);
@@ -59,11 +79,10 @@ export async function assertDatabaseInitialized(): Promise<void> {
   const expectedMigrationCount = getExpectedMigrationCount();
 
   try {
-    const result = await db.$client.execute("SELECT count(*) AS count FROM __drizzle_migrations;");
-    const rows = result.rows as Array<Array<number | null> | { count?: number | null }>;
-    const first = rows[0];
-    const appliedMigrationCount =
-      Array.isArray(first) ? Number(first[0] ?? 0) : Number(first?.count ?? 0);
+    const result = db.$client.query("SELECT count(*) AS count FROM __drizzle_migrations;").get() as
+      | { count?: number | bigint | null }
+      | undefined;
+    const appliedMigrationCount = Number(result?.count ?? 0);
 
     if (appliedMigrationCount < expectedMigrationCount) {
       throw new Error(
@@ -83,11 +102,10 @@ export async function getDatabaseInitializationWarning(): Promise<string | null>
   const expectedMigrationCount = getExpectedMigrationCount();
 
   try {
-    const result = await db.$client.execute("SELECT count(*) AS count FROM __drizzle_migrations;");
-    const rows = result.rows as Array<Array<number | null> | { count?: number | null }>;
-    const first = rows[0];
-    const appliedMigrationCount =
-      Array.isArray(first) ? Number(first[0] ?? 0) : Number(first?.count ?? 0);
+    const result = db.$client.query("SELECT count(*) AS count FROM __drizzle_migrations;").get() as
+      | { count?: number | bigint | null }
+      | undefined;
+    const appliedMigrationCount = Number(result?.count ?? 0);
 
     if (appliedMigrationCount >= expectedMigrationCount) {
       return null;

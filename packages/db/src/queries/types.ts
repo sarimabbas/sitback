@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 import { tagsTable, todosTable } from "../schema";
 
 export type DbClient = ReturnType<typeof drizzle>;

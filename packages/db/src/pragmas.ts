@@ -1,5 +1,9 @@
+type SqliteStatement = {
+  run: () => unknown;
+};
+
 type SqliteClient = {
-  execute: (statement: string) => Promise<unknown>;
+  query: (statement: string) => SqliteStatement;
 };
 
 type SqliteDbWithClient = {
@@ -7,7 +11,8 @@ type SqliteDbWithClient = {
 };
 
 export async function applySqlitePragmas(db: SqliteDbWithClient): Promise<void> {
-  await db.$client.execute("PRAGMA busy_timeout = 5000;");
-  await db.$client.execute("PRAGMA journal_mode = WAL;");
-  await db.$client.execute("PRAGMA synchronous = NORMAL;");
+  db.$client.query("PRAGMA foreign_keys = ON;").run();
+  db.$client.query("PRAGMA busy_timeout = 5000;").run();
+  db.$client.query("PRAGMA journal_mode = WAL;").run();
+  db.$client.query("PRAGMA synchronous = NORMAL;").run();
 }

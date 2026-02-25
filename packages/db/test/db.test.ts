@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/libsql";
-import { migrate } from "drizzle-orm/libsql/migrator";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { applySqlitePragmas } from "@/pragmas";
 import {
   addDependency,
@@ -44,10 +44,10 @@ beforeEach(async () => {
   tempDir = mkdtempSync(join(tmpdir(), "sitback-test-"));
   const dbFilePath = join(tempDir, "test.db");
 
-  db = drizzle({ connection: { url: `file:${dbFilePath}` } });
+  db = drizzle(dbFilePath);
   await applySqlitePragmas(db);
 
-  await migrate(db, {
+  migrate(db, {
     migrationsFolder: join(import.meta.dir, "..", "drizzle")
   });
 });
