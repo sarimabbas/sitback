@@ -23,6 +23,7 @@
   },
   "scripts": {
     "push": "bunx drizzle-kit push",
+    "pull": "bunx drizzle-kit pull",
     "generate": "bunx drizzle-kit generate",
     "generate:custom": "bunx drizzle-kit generate --custom",
     "migrate": "bunx drizzle-kit migrate",

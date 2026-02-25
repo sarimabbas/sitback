@@ -1,0 +1,28 @@
+{
+  "projectName": "web",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "bun",
+  "includeExamples": true,
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "sqlite"
+    }
+  },
+  "envVarValues": {},
+  "git": false,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react-cra",
+  "chosenAddOns": [
+    "biome",
+    "db",
+    "drizzle",
+    "form",
+    "shadcn",
+    "t3env",
+    "table",
+    "tanstack-query"
+  ]
+}
