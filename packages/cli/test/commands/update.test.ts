@@ -57,6 +57,80 @@ describe("cli todo update", () => {
     expect(todoById.tagId).toBe(3);
   });
 
+  test("updates assignee and assignee lease", () => {
+    runCli(["todo", "add", "--description", "assignable", "--status", "todo"], configDir);
+
+    const result = runCli(
+      [
+        "todo",
+        "update",
+        "--id",
+        "1",
+        "--assignee",
+        "worker-7",
+        "--assignee-lease",
+        "2031-04-15 09:30:00"
+      ],
+      configDir
+    );
+
+    expect(result.exitCode).toBe(0);
+    const todo = Bun.JSON5.parse(result.stdout) as Record<string, unknown>;
+    expect(todo.assignee).toBe("worker-7");
+    expect(todo.assigneeLease).toBe("2031-04-15 09:30:00");
+  });
+
+  test("clears assignee and lease, taking precedence over set options", () => {
+    runCli(
+      [
+        "todo",
+        "add",
+        "--description",
+        "assignable",
+        "--status",
+        "in_progress",
+        "--work-notes",
+        "has owner"
+      ],
+      configDir
+    );
+
+    runCli(
+      [
+        "todo",
+        "update",
+        "--id",
+        "1",
+        "--assignee",
+        "worker-9",
+        "--assignee-lease",
+        "2031-04-15 09:30:00"
+      ],
+      configDir
+    );
+
+    const clearResult = runCli(
+      [
+        "todo",
+        "update",
+        "--id",
+        "1",
+        "--assignee",
+        "worker-10",
+        "--clear-assignee",
+        "--assignee-lease",
+        "2032-01-01 00:00:00",
+        "--clear-assignee-lease"
+      ],
+      configDir
+    );
+
+    expect(clearResult.exitCode).toBe(0);
+    const todo = Bun.JSON5.parse(clearResult.stdout) as Record<string, unknown>;
+    expect(todo.assignee).toBeNull();
+    expect(todo.assigneeLease).toBeNull();
+  });
+
   test("rejects using --tag and --tag-id together", () => {
     runCli(["tag", "add", "--path", "work/backend"], configDir);
     runCli(["todo", "add", "--description", "task", "--status", "todo"], configDir);
@@ -75,6 +149,17 @@ describe("cli todo update", () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('Option "--id" must be of type "integer", but got "1.2"');
+  });
+
+  test("rejects invalid --assignee-lease via custom type", () => {
+    runCli(["todo", "add", "--description", "assignable", "--status", "todo"], configDir);
+
+    const result = runCli(["todo", "update", "--id", "1", "--assignee-lease", "2031-04-15T09:30:00"], configDir);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain(
+      'Option "--assignee-lease" must use YYYY-MM-DD HH:MM:SS, but got "2031-04-15T09:30:00"'
+    );
   });
 
   test("clear-predecessors takes precedence over --predecessors", () => {

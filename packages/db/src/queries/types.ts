@@ -6,7 +6,7 @@ export type TodoInsert = typeof todosTable.$inferInsert;
 export type TodoUpdate = Partial<
   Pick<
     TodoInsert,
-    "description" | "status" | "tagId" | "workNotes" | "priority" | "dueDate"
+    "description" | "status" | "tagId" | "assignee" | "assigneeLease" | "workNotes" | "priority" | "dueDate"
   >
 >;
 export type TagInsert = typeof tagsTable.$inferInsert;

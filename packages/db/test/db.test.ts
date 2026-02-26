@@ -93,6 +93,8 @@ describe("db schema", () => {
     const updated = await updateTodo(db, createdTodo.id, {
       description: "ship-crud-v2",
       status: "in_progress",
+      assignee: "worker-1",
+      assigneeLease: "2030-01-02 10:00:00",
       workNotes: "Updated notes",
       priority: 4
     });
@@ -100,6 +102,8 @@ describe("db schema", () => {
 
     expect(updatedTodo.description).toBe("ship-crud-v2");
     expect(updatedTodo.status).toBe("in_progress");
+    expect(updatedTodo.assignee).toBe("worker-1");
+    expect(updatedTodo.assigneeLease).toBe("2030-01-02 10:00:00");
     expect(updatedTodo.workNotes).toBe("Updated notes");
     expect(updatedTodo.priority).toBe(4);
 

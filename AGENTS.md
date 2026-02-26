@@ -26,6 +26,10 @@
   - Built-in types (`boolean`, `integer`, `number`, `file`, `secret`) where applicable.
   - List types (`<value:type[]>`) for comma-separated inputs (for example ID lists), instead of manual `split(",")` parsing.
   - `EnumType`/custom `.type(...)` for constrained or structured value sets (for example formats/status values, date strings, slash paths).
+- For nullable fields, prefer explicit clear flags over sentinel strings:
+  - Use `--field <value>` to set.
+  - Use `--clear-field` to unset.
+  - If both are provided, document precedence in help text (for example `--clear-field` takes precedence).
 - Keep command handlers focused on domain rules that Cliffy cannot express (for example positive integer constraints, cross-option constraints, DB existence checks).
 - Avoid duplicating "missing required" or enum validation errors in handler code when Cliffy already guarantees them.
 - If parser defaults affect warning behavior, detect whether a flag was explicitly passed (for example via `this.getRawArgs()`) before emitting "ignored option" warnings.
@@ -36,10 +40,10 @@
 - Recreate triggers when a migration rebuilds, drops, or renames a table they depend on.
 - Risk pattern: SQLite rebuild migrations using `__new_*` table, copy, drop old, rename new.
 - For rebuild migrations, drop affected triggers before table swap and recreate them after rename.
-- Canonical trigger/custom SQL lives in `src/db/custom-migrations.sql`.
-- Preserve trigger/custom migration logic by copying the relevant SQL blocks from `src/db/custom-migrations.sql` into each custom Drizzle migration that touches affected tables.
+- Canonical trigger/custom SQL lives in `src/custom-migrations.sql`.
+- Preserve trigger/custom migration logic by copying the relevant SQL blocks from `src/custom-migrations.sql` into each custom Drizzle migration that touches affected tables.
 - Use `bun run db:squash` only when the developer explicitly asks for it during local development setup and you intentionally want to reset migration history to a new baseline.
-- `db:squash` rewrites migration history, generates a fresh baseline migration, appends `src/db/custom-migrations.sql` into that new migration, and runs migrate.
+- `db:squash` rewrites migration history, generates a fresh baseline migration, appends `src/custom-migrations.sql` into that new migration, and runs migrate.
 - Do **not** use `db:squash` on shared/staging/production databases or after migrations are already distributed to other environments.
 - After migration edits, run:
   - `bun --filter '@sitback/cli' lint`

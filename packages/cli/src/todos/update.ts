@@ -2,7 +2,7 @@ import { Command, EnumType } from "@cliffy/command";
 import { getTagById, resolveTagPath, updateTodoWithRelations } from "@sitback/db/queries";
 import type { DbClient } from "@sitback/db/queries";
 import { parsePositiveInteger, parsePriority } from "../shared";
-import { dateYmdType, tagPathType } from "../types";
+import { dateTimeSecondType, dateYmdType, tagPathType } from "../types";
 
 type TodoStatus = "todo" | "in_progress" | "completed";
 
@@ -14,6 +14,10 @@ type UpdateValues = {
   clearPredecessors?: boolean;
   tag?: string;
   tagId?: number;
+  assignee?: string;
+  clearAssignee?: boolean;
+  assigneeLease?: string;
+  clearAssigneeLease?: boolean;
   workNotes?: string;
   priority?: number;
   dueDate?: string;
@@ -67,6 +71,8 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
     description?: string;
     status?: "todo" | "in_progress" | "completed";
     tagId?: number;
+    assignee?: string | null;
+    assigneeLease?: string | null;
     workNotes?: string;
     priority?: number;
     dueDate?: string;
@@ -86,6 +92,22 @@ export async function runUpdateCommand(db: DbClient, values: UpdateValues): Prom
 
   if (resolvedTagId !== undefined) {
     changes.tagId = resolvedTagId;
+  }
+
+  if (values.clearAssignee) {
+    changes.assignee = null;
+  } else if (values.assignee !== undefined) {
+    const assignee = values.assignee.trim();
+    if (assignee.length === 0) {
+      throw new Error("Invalid --assignee. Provide non-empty text");
+    }
+    changes.assignee = assignee;
+  }
+
+  if (values.clearAssigneeLease) {
+    changes.assigneeLease = null;
+  } else if (values.assigneeLease !== undefined) {
+    changes.assigneeLease = values.assigneeLease;
   }
 
   if (values.workNotes !== undefined) {
@@ -122,6 +144,7 @@ export function createTodoUpdateCommand(db: DbClient) {
     .type("todo-status", todoStatusType)
     .type("tag-path", tagPathType)
     .type("date-ymd", dateYmdType)
+    .type("datetime-second", dateTimeSecondType)
     .description("Update a todo")
     .option("--id <id:integer>", "Todo ID", { required: true })
     .option("--description <description:string>", "Todo description")
@@ -130,6 +153,13 @@ export function createTodoUpdateCommand(db: DbClient) {
     .option("--clear-predecessors", "Clear predecessor IDs (takes precedence over --predecessors)")
     .option("--tag <tag:tag-path>", "Slash-separated tag path")
     .option("--tag-id <value:integer>", "Tag ID")
+    .option("--assignee <value:string>", "Assignee identifier")
+    .option("--clear-assignee", "Clear assignee (takes precedence over --assignee)")
+    .option("--assignee-lease <value:datetime-second>", "Assignee lease YYYY-MM-DD HH:MM:SS")
+    .option(
+      "--clear-assignee-lease",
+      "Clear assignee lease (takes precedence over --assignee-lease)"
+    )
     .option("--work-notes <value:string>", "Work notes")
     .option("--priority <priority:integer>", "Priority 1-5")
     .option("--due-date <value:date-ymd>", "Due date YYYY-MM-DD")
@@ -142,6 +172,10 @@ export function createTodoUpdateCommand(db: DbClient) {
         clearPredecessors: options.clearPredecessors,
         tag: options.tag,
         tagId: options.tagId,
+        assignee: options.assignee,
+        clearAssignee: options.clearAssignee,
+        assigneeLease: options.assigneeLease,
+        clearAssigneeLease: options.clearAssigneeLease,
         workNotes: options.workNotes,
         priority: options.priority,
         dueDate: options.dueDate

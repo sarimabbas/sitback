@@ -26,3 +26,14 @@ export function tagPathType({ label, name, value }: ArgumentValue): string {
 
   return normalizedSegments.join("/");
 }
+
+export function dateTimeSecondType({ label, name, value }: ArgumentValue): string {
+  const normalized = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
+    throw new ValidationError(
+      `${label} "${name}" must use YYYY-MM-DD HH:MM:SS, but got "${value}".`
+    );
+  }
+
+  return normalized;
+}

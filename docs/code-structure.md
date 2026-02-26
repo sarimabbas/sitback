@@ -29,7 +29,7 @@ flowchart TD
     CmdExport[runExportCommand]
     CmdInit[runInitCommand]
     CmdShared[parsePositiveInteger / parsePriority]
-    CmdTypes[dateYmdType / tagPathType]
+    CmdTypes[dateYmdType / tagPathType / dateTimeSecondType]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
   end
 
