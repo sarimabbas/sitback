@@ -1,4 +1,4 @@
-import { ChevronRight, FolderTree, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,8 @@ type TagTreeSidebarProps = {
   tagTree: DashboardTagNode[]
   selectedTagId: number | null
   selectedUntagged: boolean
+  directCountByTagId: Map<number, number>
+  totalCountByTagId: Map<number, number>
   onSelectTag: (tagId: number | null) => void
   onSelectUntagged: () => void
   onRenameTag: (tagId: number, name: string) => Promise<void>
@@ -20,7 +22,10 @@ type TagTreeSidebarProps = {
 type TagNodeItemProps = {
   node: DashboardTagNode
   depth: number
+  isLast: boolean
   selectedTagId: number | null
+  directCountByTagId: Map<number, number>
+  totalCountByTagId: Map<number, number>
   onSelectTag: (tagId: number) => void
   onRenameTag: (tagId: number, name: string) => Promise<void>
   onDeleteTag: (tagId: number) => Promise<void>
@@ -29,7 +34,10 @@ type TagNodeItemProps = {
 function TagNodeItem({
   node,
   depth,
+  isLast,
   selectedTagId,
+  directCountByTagId,
+  totalCountByTagId,
   onSelectTag,
   onRenameTag,
   onDeleteTag,
@@ -41,6 +49,8 @@ function TagNodeItem({
 
   const isSelected = node.id === selectedTagId
   const hasChildren = node.children.length > 0
+  const directCount = directCountByTagId.get(node.id) ?? 0
+  const totalCount = totalCountByTagId.get(node.id) ?? 0
 
   const handleRename = async () => {
     const nextName = nameDraft.trim().toLowerCase()
@@ -70,20 +80,34 @@ function TagNodeItem({
 
   const row = (
     <div
-      className={`group flex items-center gap-1 rounded-md pr-1 transition-colors ${
+      className={`group relative flex items-center gap-1 rounded-md pr-1 transition-colors ${
         isSelected
           ? 'bg-amber-100 text-amber-900'
           : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
       }`}
       style={{ paddingLeft: `${depth * 14 + 6}px` }}
     >
+      {depth > 0 ? (
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0">
+          {Array.from({ length: depth }, (_unused, guideDepth) => guideDepth + 1).map((guideDepth) => (
+            <span
+              key={`${node.id}-${guideDepth}`}
+              className={`absolute w-px ${isSelected ? 'bg-amber-200' : 'bg-slate-200'}`}
+              style={{
+                left: `${(guideDepth - 1) * 14 + 10}px`,
+                top: guideDepth === depth && isLast ? '0' : '-4px',
+                bottom: guideDepth === depth && isLast ? '50%' : '-4px',
+              }}
+            />
+          ))}
+        </span>
+      ) : null}
+
       {hasChildren ? (
         <ChevronRight
           className={`size-3 shrink-0 transition-transform ${isOpen ? 'rotate-90' : 'rotate-0'}`}
         />
-      ) : (
-        <span className="size-3 shrink-0" />
-      )}
+      ) : null}
 
       {isRenaming ? (
         <Input
@@ -105,13 +129,18 @@ function TagNodeItem({
           disabled={isPending}
         />
       ) : (
-        <button
-          type="button"
-          onClick={() => onSelectTag(node.id)}
-          className="min-w-0 flex-1 px-1 py-1.5 text-left text-sm"
-        >
-          <span className="block truncate">{node.name}</span>
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => onSelectTag(node.id)}
+            className="min-w-0 flex-1 px-1 py-1.5 text-left text-sm"
+          >
+            <span className="block truncate">{node.name}</span>
+          </button>
+          <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+            {directCount}|{totalCount}
+          </span>
+        </>
       )}
 
       {!isRenaming ? (
@@ -157,13 +186,16 @@ function TagNodeItem({
         }}
       >
         <summary className="list-none [&::-webkit-details-marker]:hidden">{row}</summary>
-        <ul className="mt-1 space-y-1">
-          {node.children.map((child) => (
+        <ul className="mt-0.5 space-y-0.5">
+          {node.children.map((child, index) => (
             <TagNodeItem
               key={child.id}
               node={child}
               depth={depth + 1}
+              isLast={index === node.children.length - 1}
               selectedTagId={selectedTagId}
+              directCountByTagId={directCountByTagId}
+              totalCountByTagId={totalCountByTagId}
               onSelectTag={onSelectTag}
               onRenameTag={onRenameTag}
               onDeleteTag={onDeleteTag}
@@ -179,6 +211,8 @@ export function TagTreeSidebar({
   tagTree,
   selectedTagId,
   selectedUntagged,
+  directCountByTagId,
+  totalCountByTagId,
   onSelectTag,
   onSelectUntagged,
   onRenameTag,
@@ -203,9 +237,19 @@ export function TagTreeSidebar({
 
   return (
     <aside className="flex h-full min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="mb-3 flex items-center gap-2 px-2">
-        <FolderTree className="size-4 text-amber-700" />
-        <h2 className="text-sm font-semibold text-slate-900">Tag Tree</h2>
+      <div className="mb-2 flex items-center gap-3 px-2 py-1">
+        <img
+          src="/relax.png"
+          width={56}
+          height={56}
+          alt="Sitback logo"
+          className="rounded-lg object-cover shadow-sm"
+        />
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Sitback</h2>
+      </div>
+
+      <div className="mb-3 border-t border-slate-200 px-2 pt-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        Tag Tree
       </div>
 
       <Button
@@ -266,13 +310,16 @@ export function TagTreeSidebar({
         <p className="px-2 text-sm text-slate-500">No tags yet.</p>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <ul className="space-y-1">
-            {tagTree.map((node) => (
+          <ul className="space-y-0.5">
+            {tagTree.map((node, index) => (
               <TagNodeItem
                 key={node.id}
                 node={node}
                 depth={0}
+                isLast={index === tagTree.length - 1}
                 selectedTagId={selectedTagId}
+                directCountByTagId={directCountByTagId}
+                totalCountByTagId={totalCountByTagId}
                 onSelectTag={onSelectTag}
                 onRenameTag={onRenameTag}
                 onDeleteTag={onDeleteTag}

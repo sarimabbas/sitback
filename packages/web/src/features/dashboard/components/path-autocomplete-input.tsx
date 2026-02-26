@@ -56,9 +56,12 @@ export function PathAutocompleteInput({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command shouldFilter={false}>
           <CommandInput
+            name="tag-path-filter"
+            aria-label="Filter by tag path"
+            autoComplete="off"
             value={value}
             onValueChange={(next) => onChange(next.toLowerCase())}
-            placeholder={placeholder || 'Type tag path'}
+            placeholder={placeholder ? `${placeholder.replace(/\.\.\.$/, '').replace(/…$/, '')}…` : 'Type tag path…'}
           />
           <CommandList>
             <CommandEmpty>No matching tag path.</CommandEmpty>

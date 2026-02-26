@@ -3,7 +3,6 @@ import { useRef, useState } from 'react'
 import type { SortingState, Updater } from '@tanstack/react-table'
 import { toast } from 'sonner'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { dashboardTodosCollection } from '@/db-collections/dashboard-todos'
 import {
@@ -27,7 +26,7 @@ import {
   getTagScopeIds,
 } from '../lib/filtering'
 import { useDashboardData } from '../hooks/use-dashboard-data'
-import type { DashboardTodo } from '../types'
+import type { DashboardTagNode, DashboardTodo } from '../types'
 import type { DashboardUrlState } from '../url-state'
 
 function getPredecessorIds(
@@ -53,6 +52,49 @@ function normalizeSorting(search: DashboardUrlState): SortingState {
   ]
 }
 
+function buildTagNodeMap(nodes: DashboardTagNode[]) {
+  const map = new Map<number, DashboardTagNode>()
+
+  const walk = (list: DashboardTagNode[]) => {
+    for (const node of list) {
+      map.set(node.id, node)
+      walk(node.children)
+    }
+  }
+
+  walk(nodes)
+  return map
+}
+
+function buildTagCounts(tagTree: DashboardTagNode[], todos: DashboardTodo[]) {
+  const directCountByTagId = new Map<number, number>()
+
+  for (const todo of todos) {
+    if (todo.tagId === null) {
+      continue
+    }
+
+    directCountByTagId.set(todo.tagId, (directCountByTagId.get(todo.tagId) ?? 0) + 1)
+  }
+
+  const totalCountByTagId = new Map<number, number>()
+
+  const sumNode = (node: DashboardTagNode): number => {
+    let total = directCountByTagId.get(node.id) ?? 0
+    for (const child of node.children) {
+      total += sumNode(child)
+    }
+    totalCountByTagId.set(node.id, total)
+    return total
+  }
+
+  for (const node of tagTree) {
+    sumNode(node)
+  }
+
+  return { directCountByTagId, totalCountByTagId }
+}
+
 type DashboardPageProps = {
   search: DashboardUrlState
   setSearch: (patch: Partial<DashboardUrlState>) => void
@@ -75,7 +117,7 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
   const sorting = normalizeSorting(search)
 
   if (isLoading) {
-    return <div className="p-6 text-slate-600">Loading dashboard...</div>
+    return <div className="p-6 text-slate-600">Loading dashboard…</div>
   }
 
   if (isError || !data) {
@@ -83,6 +125,9 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
   }
 
   const scopedTagIds = getTagScopeIds(data.tagTree, selectedTagId)
+  const tagNodeById = buildTagNodeMap(data.tagTree)
+  const selectedTagNode = selectedTagId ? tagNodeById.get(selectedTagId) : undefined
+  const selectedTagIsLeaf = Boolean(selectedTagNode && selectedTagNode.children.length === 0)
 
   const todoById = new Map(data.todos.map((todo) => [todo.id, todo]))
   const computedBlocked = new Map<number, boolean>()
@@ -102,6 +147,7 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
   }))
 
   const tagPathMap = buildTagPathMap(data.tagTree)
+  const { directCountByTagId, totalCountByTagId } = buildTagCounts(data.tagTree, todosWithComputedBlocked)
   const selectedTagPath =
     selectedUntagged || !selectedTagId
       ? null
@@ -265,6 +311,36 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
     toast.success(`Deleted ${ids.length} todos`)
   }
 
+  const handleBulkSetStatus = async (ids: number[], status: DashboardTodo['status']) => {
+    if (ids.length === 0) {
+      return
+    }
+
+    for (const id of ids) {
+      await dashboardTodosCollection.update(id, (draft) => {
+        draft.status = status
+      })
+    }
+
+    await refetchMetadata()
+    toast.success(`Updated status for ${ids.length} todos`)
+  }
+
+  const handleBulkSetTag = async (ids: number[], tagId: number | null) => {
+    if (ids.length === 0) {
+      return
+    }
+
+    for (const id of ids) {
+      await dashboardTodosCollection.update(id, (draft) => {
+        draft.tagId = tagId
+      })
+    }
+
+    await refetchMetadata()
+    toast.success(`Updated tag for ${ids.length} todos`)
+  }
+
   const handleSetPredecessors = async (id: number, predecessorIds: number[]) => {
     await setDashboardTodoPredecessors({
       data: {
@@ -327,6 +403,8 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
           tagTree={data.tagTree}
           selectedTagId={selectedTagId}
           selectedUntagged={selectedUntagged}
+          directCountByTagId={directCountByTagId}
+          totalCountByTagId={totalCountByTagId}
           onSelectTag={(tagId) =>
             setSearch({
               tagId: tagId ?? undefined,
@@ -343,7 +421,6 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
           <header className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm text-slate-700">
-                <h1 className="text-base font-semibold text-slate-900">Dashboard</h1>
                 <span className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-xs text-cyan-800">
                   <Tag className="size-3" />
                   {scopeLabel}
@@ -352,12 +429,12 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
                   <GitBranch className="size-3" />
                   {viewMode === 'graph' ? graphDependencies.length : filteredDependencies.length} links
                 </span>
+                <span className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
+                  {viewMode === 'graph' ? graphTodos.length : filteredTodos.length} todos
+                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-slate-300 bg-white text-xs">
-                  {viewMode === 'graph' ? graphTodos.length : filteredTodos.length} todos
-                </Badge>
                 <Button
                   type="button"
                   size="sm"
@@ -400,12 +477,15 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
               dependencies={filteredDependencies}
               tagTree={data.tagTree}
               selectedTagPath={selectedTagPath}
+              selectedTagIsLeaf={selectedTagIsLeaf}
               sorting={sorting}
               onSortingChange={handleSortingChange}
               onFocusTodo={(todoId) => setSearch({ todoId })}
               onSelectTodo={(todo) => setSearch({ todoId: todo.id })}
               onDeleteTodo={handleDeleteTodo}
               onBulkDeleteTodos={handleBulkDeleteTodos}
+              onBulkSetStatus={handleBulkSetStatus}
+              onBulkSetTag={handleBulkSetTag}
             />
           ) : (
             <TodoGraphView

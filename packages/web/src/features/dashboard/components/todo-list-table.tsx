@@ -5,10 +5,11 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown, Link2, Trash2, User } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -30,12 +31,15 @@ type TodoListTableProps = {
   dependencies: DashboardDependency[]
   tagTree: DashboardTagNode[]
   selectedTagPath: string | null
+  selectedTagIsLeaf: boolean
   sorting: SortingState
   onSortingChange: (value: Updater<SortingState>) => void
   onFocusTodo: (todoId: number) => void
   onSelectTodo: (todo: DashboardTodo) => void
   onDeleteTodo: (id: number) => Promise<void>
   onBulkDeleteTodos: (ids: number[]) => Promise<void>
+  onBulkSetStatus: (ids: number[], status: DashboardTodo['status']) => Promise<void>
+  onBulkSetTag: (ids: number[], tagId: number | null) => Promise<void>
 }
 
 function statusBadgeVariant(status: DashboardTodo['status']) {
@@ -59,15 +63,24 @@ export function TodoListTable({
   dependencies,
   tagTree,
   selectedTagPath,
+  selectedTagIsLeaf,
   sorting,
   onSortingChange,
   onFocusTodo,
   onSelectTodo,
   onDeleteTodo,
   onBulkDeleteTodos,
+  onBulkSetStatus,
+  onBulkSetTag,
 }: TodoListTableProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [bulkStatus, setBulkStatus] = useState<'__none__' | DashboardTodo['status']>('__none__')
+  const [bulkTag, setBulkTag] = useState<string>('__none__')
   const tagPathMap = useMemo(() => buildTagPathMap(tagTree), [tagTree])
+  const tagOptions = useMemo(
+    () => Array.from(tagPathMap.entries()).sort((a, b) => a[1].localeCompare(b[1])),
+    [tagPathMap],
+  )
 
   const predecessorMap = useMemo(() => {
     const map = new Map<number, number[]>()
@@ -83,6 +96,18 @@ export function TodoListTable({
 
     return map
   }, [dependencies])
+
+  const handleRowDelete = useCallback(
+    async (todoId: number) => {
+      const shouldDelete = window.confirm('Delete this todo? This cannot be undone.')
+      if (!shouldDelete) {
+        return
+      }
+
+      await onDeleteTodo(todoId)
+    },
+    [onDeleteTodo],
+  )
 
   const columns = useMemo<ColumnDef<DashboardTodo>[]>(
     () => [
@@ -226,7 +251,7 @@ export function TodoListTable({
           }
 
           const path = tagPathMap.get(row.original.tagId) ?? '(unknown)'
-          const isSameTag = selectedTagPath !== null && path === selectedTagPath
+          const isSameTag = selectedTagPath !== null && path === selectedTagPath && !selectedTagIsLeaf
 
           if (isSameTag) {
             return (
@@ -265,9 +290,10 @@ export function TodoListTable({
             variant="ghost"
             size="icon-sm"
             className="text-red-700 hover:bg-red-50"
+            aria-label={`Delete todo ${row.original.id}`}
             onClick={(event: MouseEvent<HTMLButtonElement>) => {
               event.stopPropagation()
-              void onDeleteTodo(row.original.id)
+              void handleRowDelete(row.original.id)
             }}
           >
             <Trash2 className="size-4" />
@@ -275,7 +301,7 @@ export function TodoListTable({
         ),
       },
     ],
-    [onDeleteTodo, onFocusTodo, predecessorMap, selectedTagPath, tagPathMap],
+    [handleRowDelete, onFocusTodo, predecessorMap, selectedTagIsLeaf, selectedTagPath, tagPathMap],
   )
 
   const passthroughFilter: FilterFn<DashboardTodo> = () => true
@@ -300,13 +326,81 @@ export function TodoListTable({
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-900">Todo list</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Todo List</h2>
         <div className="flex items-center gap-2">
           {selectedTodoIds.length > 0 ? (
             <>
               <span className="rounded border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-xs text-cyan-900">
                 {selectedTodoIds.length} selected
               </span>
+              <Select
+                value={bulkStatus}
+                onValueChange={(value: '__none__' | DashboardTodo['status']) => setBulkStatus(value)}
+              >
+                <SelectTrigger aria-label="Bulk status action" className="h-7 w-[150px] text-xs">
+                  <SelectValue placeholder="Set status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Set status</SelectItem>
+                  <SelectItem value="todo">todo</SelectItem>
+                  <SelectItem value="in_progress">in_progress</SelectItem>
+                  <SelectItem value="completed">completed</SelectItem>
+                  <SelectItem value="cancelled">cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                disabled={bulkStatus === '__none__'}
+                onClick={async () => {
+                  if (bulkStatus === '__none__') {
+                    return
+                  }
+
+                  await onBulkSetStatus(selectedTodoIds, bulkStatus)
+                  setRowSelection({})
+                  setBulkStatus('__none__')
+                }}
+              >
+                Apply Status
+              </Button>
+              <Select value={bulkTag} onValueChange={setBulkTag}>
+                <SelectTrigger aria-label="Bulk tag action" className="h-7 w-[220px] text-xs">
+                  <SelectValue placeholder="Set tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Set tag</SelectItem>
+                  <SelectItem value="__untagged__">untagged</SelectItem>
+                  {tagOptions.map(([id, path]) => (
+                    <SelectItem key={id} value={String(id)}>
+                      {path}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                disabled={bulkTag === '__none__'}
+                onClick={async () => {
+                  if (bulkTag === '__none__') {
+                    return
+                  }
+
+                  await onBulkSetTag(
+                    selectedTodoIds,
+                    bulkTag === '__untagged__' ? null : Number(bulkTag),
+                  )
+                  setRowSelection({})
+                  setBulkTag('__none__')
+                }}
+              >
+                Apply Tag
+              </Button>
               <Button
                 type="button"
                 size="sm"
@@ -328,9 +422,6 @@ export function TodoListTable({
               </Button>
             </>
           ) : null}
-          <span className="rounded border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-            {todos.length} results
-          </span>
         </div>
       </div>
 
@@ -381,7 +472,15 @@ export function TodoListTable({
                 <TableRow
                   key={row.id}
                   className="cursor-pointer border-b border-slate-200/80 bg-white transition-colors hover:bg-slate-50"
+                  tabIndex={0}
                   onClick={() => onSelectTodo(row.original)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      onSelectTodo(row.original)
+                    }
+                  }}
+                  style={{ contentVisibility: 'auto', containIntrinsicSize: '72px' }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="whitespace-normal align-top">

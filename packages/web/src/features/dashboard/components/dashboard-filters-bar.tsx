@@ -38,9 +38,12 @@ export function DashboardFiltersBar({
   return (
     <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr]">
       <Input
+        name="dashboard-query"
+        aria-label="Search todos"
+        autoComplete="off"
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Search by id, text, status, or tag"
+        placeholder="Search by id, text, status, or tag…"
       />
 
       <StatusMultiSelect value={statusFilters} onChange={onStatusFiltersChange} />
@@ -49,7 +52,7 @@ export function DashboardFiltersBar({
         value={blockedFilter}
         onValueChange={(value: 'all' | 'blocked' | 'unblocked') => onBlockedFilterChange(value)}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full" aria-label="Blocked filter">
           <SelectValue placeholder="Blocked" />
         </SelectTrigger>
         <SelectContent>
@@ -63,7 +66,7 @@ export function DashboardFiltersBar({
         value={assigneeFilter === '' ? '__all__' : assigneeFilter}
         onValueChange={(value) => onAssigneeFilterChange(value === '__all__' ? '' : value)}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full" aria-label="Assignee filter">
           <SelectValue placeholder="Assignee" />
         </SelectTrigger>
         <SelectContent>

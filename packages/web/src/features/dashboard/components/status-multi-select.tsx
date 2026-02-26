@@ -59,7 +59,14 @@ export function StatusMultiSelect({ value, onChange }: StatusMultiSelectProps) {
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
-          <CommandInput value={query} onValueChange={setQuery} placeholder="Filter statuses" />
+          <CommandInput
+            name="status-filter"
+            aria-label="Filter statuses"
+            autoComplete="off"
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Filter statuses…"
+          />
           <CommandList>
             <CommandEmpty>No status found.</CommandEmpty>
             <CommandGroup>
