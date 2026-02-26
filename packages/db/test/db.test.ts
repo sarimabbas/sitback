@@ -15,7 +15,6 @@ import {
   deleteTodo,
   deleteTag,
   getExportTree,
-  getNextTodos,
   getReadyTodos,
   getTagById,
   getTags,
@@ -186,74 +185,6 @@ describe("db schema", () => {
     expect(todos[1]?.id).toBe(todoA.id);
   });
 
-  test("getNextTodos returns unblocked todo items with default scheduling behavior", async () => {
-    const predecessor = requireValue(
-      await createTodo(db, { description: "map", status: "in_progress" }),
-      "Expected predecessor"
-    );
-    const blocked = requireValue(
-      await createTodo(db, { description: "reduce", status: "todo" }),
-      "Expected blocked todo"
-    );
-    const readyA = requireValue(
-      await createTodo(db, { description: "ready-a", status: "todo" }),
-      "Expected ready A"
-    );
-    const readyB = requireValue(
-      await createTodo(db, { description: "ready-b", status: "todo" }),
-      "Expected ready B"
-    );
-
-    await addDependency(db, blocked.id, predecessor.id);
-
-    const nextOne = await getNextTodos(db, 1);
-
-    expect(nextOne).toHaveLength(1);
-    expect(nextOne[0]?.id).toBe(readyA.id);
-    expect(nextOne[0]?.isBlocked).toBe(false);
-
-    const nextTwo = await getNextTodos(db, 2);
-    expect(nextTwo).toHaveLength(2);
-    expect(nextTwo[0]?.id).toBe(readyA.id);
-    expect(nextTwo[1]?.id).toBe(readyB.id);
-  });
-
-  test("getNextTodos prioritizes earlier due dates, then higher priority", async () => {
-    const lateHigh = requireValue(
-      await createTodo(db, {
-        description: "late-high",
-        status: "todo",
-        dueDate: "2031-12-01",
-        priority: 5
-      }),
-      "Expected late-high todo"
-    );
-    const soonLow = requireValue(
-      await createTodo(db, {
-        description: "soon-low",
-        status: "todo",
-        dueDate: "2030-01-01",
-        priority: 1
-      }),
-      "Expected soon-low todo"
-    );
-    const soonHigh = requireValue(
-      await createTodo(db, {
-        description: "soon-high",
-        status: "todo",
-        dueDate: "2030-01-01",
-        priority: 4
-      }),
-      "Expected soon-high todo"
-    );
-
-    const next = await getNextTodos(db, 3);
-
-    expect(next[0]?.id).toBe(soonHigh.id);
-    expect(next[1]?.id).toBe(soonLow.id);
-    expect(next[2]?.id).toBe(lateHigh.id);
-  });
-
   test("claimTodo picks best actionable todo and sets assignee lease", async () => {
     const blocker = requireValue(
       await createTodo(db, { description: "blocker", status: "in_progress" }),
@@ -402,20 +333,18 @@ describe("db schema", () => {
 
     const blockedOnly = await getTodosForGet(db, {
       limit: 5,
-      actionableOnly: false,
       blocked: true
     });
     expect(blockedOnly.some((todo) => todo.id === blockedTodo.id)).toBe(true);
 
-    const filteredReady = await getTodosForGet(db, {
+    const filteredByPriorityAndDue = await getTodosForGet(db, {
       limit: 5,
-      actionableOnly: true,
       minPriority: 3,
       dueBefore: "2030-01-31"
     });
 
-    expect(filteredReady.map((todo) => todo.id)).toEqual([readySoon.id]);
-    expect(filteredReady.some((todo) => todo.id === readyLateLow.id)).toBe(false);
+    expect(filteredByPriorityAndDue.map((todo) => todo.id)).toEqual([blocker.id, readySoon.id, blockedTodo.id]);
+    expect(filteredByPriorityAndDue.some((todo) => todo.id === readyLateLow.id)).toBe(false);
   });
 
   test("addTodo upserts tag path and attaches predecessors", async () => {

@@ -33,8 +33,7 @@ describe("cli help defaults", () => {
     const output = stripAnsi(result.stdout);
 
     expect(result.exitCode).toBe(0);
-    expect(output).toContain('Default: "1"');
-    expect(output).toContain('Default: "actionable-only when omitted"');
+    expect(output).toContain('Default: "20"');
   });
 
   test("shows default for todo add status", () => {

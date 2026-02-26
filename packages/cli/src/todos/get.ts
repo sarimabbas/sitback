@@ -90,7 +90,6 @@ export async function runGetCommand(
 
   const todos = await getTodosForGet(db, {
     limit,
-    actionableOnly: blocked === undefined,
     blocked,
     minPriority,
     dueBefore,
@@ -111,12 +110,10 @@ export function createTodoGetCommand(db: DbClient) {
     .description("Get todos")
     .option("--ids <ids:integer[]>", "Comma-separated todo IDs")
     .option("--num <num:integer>", "Number of todos to return", {
-      default: 1,
-      defaultText: "1"
+      default: 20,
+      defaultText: "20"
     })
-    .option("--blocked <blocked:boolean>", "Filter by blocked state (true|false)", {
-      defaultText: "actionable-only when omitted"
-    })
+    .option("--blocked <blocked:boolean>", "Filter by blocked state (true|false)")
     .option("--min-priority <value:integer>", "Minimum priority filter (1-5)")
     .option("--due-before <value:date-ymd>", "Filter by due date upper bound")
     .option("--due-after <value:date-ymd>", "Filter by due date lower bound")

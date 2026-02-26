@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe("cli get", () => {
-  test("returns best next actionable todo by default", () => {
+  test("returns todos by default", () => {
     runCli(["todo", "add", "--description", "map", "--status", "in_progress"], configDir);
     runCli(["todo", "add", "--description", "reduce", "--status", "todo", "--predecessors", "1"], configDir);
     runCli(
@@ -35,9 +35,11 @@ describe("cli get", () => {
 
     expect(result.exitCode).toBe(0);
     const todos = Bun.JSON5.parse(result.stdout) as Array<Record<string, unknown>>;
-    expect(todos).toHaveLength(1);
-    expect(todos[0]?.description).toBe("ready");
-    expect(todos[0]?.isBlocked).toBe(false);
+    expect(todos).toHaveLength(3);
+    const descriptions = todos.map((todo) => String(todo.description));
+    expect(descriptions).toContain("map");
+    expect(descriptions).toContain("reduce");
+    expect(descriptions).toContain("ready");
   });
 
   test("returns ids and warns when combined with --num", () => {
@@ -109,7 +111,8 @@ describe("cli get", () => {
 
     expect(highPriority.exitCode).toBe(0);
     const highPriorityTodos = Bun.JSON5.parse(highPriority.stdout) as Array<Record<string, unknown>>;
-    expect(highPriorityTodos).toHaveLength(0);
+    expect(highPriorityTodos).toHaveLength(1);
+    expect(highPriorityTodos[0]?.description).toBe("blocked");
   });
 
   test("filters todos by tag path and includes descendant tags", () => {

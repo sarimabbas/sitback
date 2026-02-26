@@ -78,7 +78,6 @@ flowchart TD
     QTDelete[deleteTodo]
     QTReady[getReadyTodos]
     QTByIds[getTodosByIds]
-    QTNext[getNextTodos]
     QTClaim[claimTodo]
     QTForGet[getTodosForGet]
     QTAdd[addTodo]
@@ -196,7 +195,6 @@ flowchart TD
   QTForGet --> QTSort
   QTClaim --> QTGetById
   QTClaim --> QTSort
-  QTNext --> QTForGet
 
   CmdExport --> QEGet
   QEGet --> QGAll
@@ -241,7 +239,7 @@ flowchart TD
 - Commands are grouped by domain under `src/commands/todos/*`, `src/commands/tags/*`, and `src/commands/export/*`.
 - Shared CLI option parsing/validation is centralized in `src/commands/shared.ts`.
 - Cliffy option primitives (`required`, `default`, built-in types, and enum/custom types) are preferred for CLI parsing and help metadata, with `shared.ts` reserved for domain-specific validators.
-- Scheduling behavior is centralized in `compareTodosForScheduling` and reused by `getNextTodos`/`getTodosForGet`.
+- Scheduling behavior is centralized in `compareTodosForScheduling` and reused by `getTodosForGet`.
 - Todo blocked-state selection is centralized in `todosWithBlockedSelection` and reused by `getTodoById`/`getTodos`/`getTodosByIds`/`getTodosForGet`.
 - Tag path upsert is centralized in `ensureTagPath` and reused by `addTodo`.
 - Migration SQL (`drizzle/*.sql`) is applied by `sb init` (via `runMigrations`), not by default command startup.

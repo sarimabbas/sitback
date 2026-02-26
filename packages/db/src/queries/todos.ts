@@ -146,13 +146,6 @@ export async function getTodosByIds(db: DbClient, ids: number[]) {
   return uniqueIds.map((id) => rowsById.get(id)).filter((todo): todo is NonNullable<typeof todo> => todo !== undefined);
 }
 
-export async function getNextTodos(db: DbClient, limit: number) {
-  return getTodosForGet(db, {
-    limit,
-    actionableOnly: true
-  });
-}
-
 function claimableConditions(options: { id?: number }) {
   const conditions = [
     sql`${todosTable.status} != 'completed'`,
@@ -230,8 +223,8 @@ export async function getTodosForGet(
   db: DbClient,
   options: {
     limit: number;
-    actionableOnly: boolean;
     blocked?: boolean;
+    statuses?: Array<"todo" | "in_progress" | "completed">;
     minPriority?: number;
     dueBefore?: string;
     dueAfter?: string;
@@ -241,9 +234,8 @@ export async function getTodosForGet(
   const conditions = [] as ReturnType<typeof sql>[];
   const blockedExpr = blockedExistsSql(todosTable.id);
 
-  if (options.actionableOnly) {
-    conditions.push(eq(todosTable.status, "todo") as unknown as ReturnType<typeof sql>);
-    conditions.push(sql`not (${blockedExpr})`);
+  if (options.statuses && options.statuses.length > 0) {
+    conditions.push(inArray(todosTable.status, options.statuses) as unknown as ReturnType<typeof sql>);
   }
 
   if (options.blocked !== undefined) {
