@@ -15,6 +15,8 @@ type TodoRowWithBlocked = {
   description: string;
   tagId: number | null;
   status: "todo" | "in_progress" | "completed";
+  assignee: string | null;
+  assigneeLease: string | null;
   workNotes: string | null;
   priority: number | null;
   dueDate: string | null;
@@ -57,6 +59,8 @@ function todosWithBlockedSelection() {
     description: todosTable.description,
     tagId: todosTable.tagId,
     status: todosTable.status,
+    assignee: todosTable.assignee,
+    assigneeLease: todosTable.assigneeLease,
     workNotes: todosTable.workNotes,
     priority: todosTable.priority,
     dueDate: todosTable.dueDate,
@@ -147,6 +151,79 @@ export async function getNextTodos(db: DbClient, limit: number) {
     limit,
     actionableOnly: true
   });
+}
+
+function claimableConditions(options: { id?: number }) {
+  const conditions = [
+    sql`${todosTable.status} != 'completed'`,
+    sql`not (${blockedExistsSql(todosTable.id)})`,
+    sql`(${todosTable.assignee} is null or (${todosTable.assignee} is not null and ${todosTable.assigneeLease} <= CURRENT_TIMESTAMP))`
+  ] as ReturnType<typeof sql>[];
+
+  if (options.id !== undefined) {
+    conditions.push(eq(todosTable.id, options.id) as unknown as ReturnType<typeof sql>);
+  }
+
+  return conditions;
+}
+
+export async function claimTodo(
+  db: DbClient,
+  input: {
+    assignee: string;
+    leaseMinutes: number;
+    id?: number;
+  }
+) {
+  const leaseExpr = sql<string>`datetime('now', '+' || ${input.leaseMinutes} || ' minutes')`;
+
+  if (input.id !== undefined) {
+    const [claimed] = await db
+      .update(todosTable)
+      .set({
+        status: "in_progress",
+        assignee: input.assignee,
+        assigneeLease: leaseExpr
+      })
+      .where(and(...claimableConditions({ id: input.id })))
+      .returning({ id: todosTable.id });
+
+    if (!claimed) {
+      return undefined;
+    }
+
+    return getTodoById(db, claimed.id);
+  }
+
+  const [claimed] = await db
+    .update(todosTable)
+    .set({
+      status: "in_progress",
+      assignee: input.assignee,
+      assigneeLease: leaseExpr
+    })
+    .where(sql`${todosTable.id} = (
+      select c.id
+      from todos c
+      where c.status != 'completed'
+        and not exists (
+          select 1
+          from todo_dependencies d
+          join todos p on p.id = d.predecessor_id
+          where d.successor_id = c.id
+            and p.status != 'completed'
+        )
+        and (c.assignee is null or (c.assignee is not null and c.assignee_lease <= CURRENT_TIMESTAMP))
+      order by coalesce(c.due_date, '9999-12-31') asc, coalesce(c.priority, 0) desc, c.id asc
+      limit 1
+    )`)
+    .returning({ id: todosTable.id });
+
+  if (!claimed) {
+    return undefined;
+  }
+
+  return getTodoById(db, claimed.id);
 }
 
 export async function getTodosForGet(

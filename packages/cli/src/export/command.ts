@@ -29,7 +29,7 @@ function renderTodoMarkdown(nodes: ExportTodoNode[], depth = 0): string {
     .map((node) => {
       const predecessors =
         node.predecessorIds.length > 0 ? node.predecessorIds.map((id) => `#${id}`).join(",") : "none";
-      const line = `${prefix}- #${node.id} ${node.description} [status=${node.status}, blocked=${node.isBlocked}, tag=${node.tagId ?? "none"}, predecessors=${predecessors}]`;
+      const line = `${prefix}- #${node.id} ${node.description} [status=${node.status}, blocked=${node.isBlocked}, assignee=${node.assignee ?? "none"}, lease=${node.assigneeLease ?? "none"}, tag=${node.tagId ?? "none"}, predecessors=${predecessors}]`;
 
       if (node.children.length === 0) {
         return line;

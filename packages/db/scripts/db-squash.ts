@@ -4,7 +4,7 @@ import { join } from "node:path";
 const projectRoot = process.cwd();
 const drizzleDir = join(projectRoot, "drizzle");
 const drizzleMetaDir = join(drizzleDir, "meta");
-const customMigrationsPath = join(projectRoot, "src", "db", "custom-migrations.sql");
+const customMigrationsPath = join(projectRoot, "src", "custom-migrations.sql");
 
 function run(command: string[]) {
   const result = Bun.spawnSync({

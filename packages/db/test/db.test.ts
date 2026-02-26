@@ -8,6 +8,7 @@ import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { applySqlitePragmas } from "@/pragmas";
 import {
   addDependency,
+  claimTodo,
   addTodo,
   createTodo,
   createTag,
@@ -247,6 +248,112 @@ describe("db schema", () => {
     expect(next[0]?.id).toBe(soonHigh.id);
     expect(next[1]?.id).toBe(soonLow.id);
     expect(next[2]?.id).toBe(lateHigh.id);
+  });
+
+  test("claimTodo picks best actionable todo and sets assignee lease", async () => {
+    const blocker = requireValue(
+      await createTodo(db, { description: "blocker", status: "in_progress" }),
+      "Expected blocker"
+    );
+    const blocked = requireValue(
+      await createTodo(db, { description: "blocked", status: "todo", dueDate: "2030-01-01" }),
+      "Expected blocked todo"
+    );
+    const readyLate = requireValue(
+      await createTodo(db, { description: "ready-late", status: "todo", dueDate: "2030-02-01" }),
+      "Expected ready-late"
+    );
+    const readySoon = requireValue(
+      await createTodo(db, { description: "ready-soon", status: "todo", dueDate: "2030-01-02" }),
+      "Expected ready-soon"
+    );
+
+    await addDependency(db, blocked.id, blocker.id);
+
+    const claimed = requireValue(
+      await claimTodo(db, {
+        assignee: "worker-1",
+        leaseMinutes: 15
+      }),
+      "Expected claimed todo"
+    );
+
+    expect(claimed.id).toBe(readySoon.id);
+    expect(claimed.status).toBe("in_progress");
+    expect(claimed.assignee).toBe("worker-1");
+    expect(claimed.assigneeLease).toBeDefined();
+
+    const fetchedLate = requireValue(await getTodoById(db, readyLate.id), "Expected ready-late todo");
+    expect(fetchedLate.assignee).toBeNull();
+  });
+
+  test("claimTodo can claim an explicitly requested todo id", async () => {
+    const todoA = requireValue(
+      await createTodo(db, { description: "task-a", status: "todo" }),
+      "Expected todo A"
+    );
+    const todoB = requireValue(
+      await createTodo(db, { description: "task-b", status: "todo" }),
+      "Expected todo B"
+    );
+
+    const claimed = requireValue(
+      await claimTodo(db, {
+        assignee: "worker-2",
+        leaseMinutes: 30,
+        id: todoB.id
+      }),
+      "Expected claimed todo"
+    );
+
+    expect(claimed.id).toBe(todoB.id);
+    expect(claimed.assignee).toBe("worker-2");
+
+    const untouched = requireValue(await getTodoById(db, todoA.id), "Expected untouched todo");
+    expect(untouched.assignee).toBeNull();
+  });
+
+  test("claimTodo returns undefined when todo is already assigned with active lease", async () => {
+    const claimed = requireValue(
+      await createTodo(db, {
+        description: "claimed",
+        status: "in_progress",
+        assignee: "worker-1",
+        assigneeLease: "9999-01-01 00:00:00"
+      }),
+      "Expected claimed todo"
+    );
+
+    const result = await claimTodo(db, {
+      assignee: "worker-2",
+      leaseMinutes: 15,
+      id: claimed.id
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  test("claimTodo can reclaim a todo when lease is expired", async () => {
+    const stale = requireValue(
+      await createTodo(db, {
+        description: "stale",
+        status: "in_progress",
+        assignee: "worker-1",
+        assigneeLease: "2000-01-01 00:00:00"
+      }),
+      "Expected stale todo"
+    );
+
+    const claimed = requireValue(
+      await claimTodo(db, {
+        assignee: "worker-2",
+        leaseMinutes: 5
+      }),
+      "Expected reclaimed todo"
+    );
+
+    expect(claimed.id).toBe(stale.id);
+    expect(claimed.assignee).toBe("worker-2");
   });
 
   test("getTodosForGet applies blocked, min-priority, and due date filters", async () => {

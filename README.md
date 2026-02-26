@@ -17,6 +17,7 @@ Usually, AI agents will use a `TODO.md` file, but to efficiently manage context,
 ```bash
 sb todo add --description "Read paper A" --tag research/mapreduce --status todo
 sb todo get --num 3
+sb todo claim --assignee worker-1
 sb todo update --id 7 --status in_progress
 sb todo delete --ids 3,5
 sb tag get

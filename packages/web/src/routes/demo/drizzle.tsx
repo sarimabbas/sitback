@@ -1,35 +1,22 @@
-import { todosTable } from '@sitback/db/schema'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { desc } from 'drizzle-orm'
+import { useLiveQuery } from '@tanstack/react-db'
+import { createFileRoute } from '@tanstack/react-router'
 
-const getTodos = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  const { db } = await import('@sitback/db/web')
-  return await db.select().from(todosTable).orderBy(desc(todosTable.createdAt))
-})
-
-const createTodo = createServerFn({
-  method: 'POST',
-})
-  .inputValidator((data: { title: string }) => data)
-  .handler(async ({ data }) => {
-    const { db } = await import('@sitback/db/web')
-    await db
-      .insert(todosTable)
-      .values({ description: data.title, status: 'todo' })
-    return { success: true }
-  })
+import { todosCollection } from '@/db-collections/todos'
+import { createTodo, type TodoStatus } from '@/server/todos'
 
 export const Route = createFileRoute('/demo/drizzle')({
   component: DemoDrizzle,
-  loader: async () => await getTodos(),
 })
 
 function DemoDrizzle() {
-  const router = useRouter()
-  const todos = Route.useLoaderData() as Array<{ id: number; description: string }>
+  const { data: todos = [], isLoading } = useLiveQuery((q) =>
+    q
+      .from({ todo: todosCollection })
+      .orderBy(({ todo }) => todo.createdAt, 'desc')
+      .select(({ todo }) => ({
+        ...todo,
+      })),
+  )
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -40,11 +27,29 @@ function DemoDrizzle() {
 
     try {
       await createTodo({ data: { title } })
-      router.invalidate()
+      await todosCollection.utils.refetch()
       ;(e.target as HTMLFormElement).reset()
     } catch (error) {
       console.error('Failed to create todo:', error)
     }
+  }
+
+  const getNextStatus = (status: TodoStatus): TodoStatus => {
+    if (status === 'todo') {
+      return 'in_progress'
+    }
+
+    if (status === 'in_progress') {
+      return 'completed'
+    }
+
+    return 'todo'
+  }
+
+  const handleCycleStatus = async (id: number, status: TodoStatus) => {
+    await todosCollection.update(id, (draft) => {
+      draft.status = getNextStatus(status)
+    })
   }
 
   return (
@@ -99,14 +104,29 @@ function DemoDrizzle() {
                 borderColor: 'rgba(93, 103, 227, 0.3)',
               }}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-medium text-white group-hover:text-indigo-200 transition-colors">
-                  {todo.description}
-                </span>
-                <span className="text-xs text-indigo-300/70">#{todo.id}</span>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="text-lg font-medium text-white group-hover:text-indigo-200 transition-colors">
+                    {todo.description}
+                  </span>
+                  <div className="mt-2 text-xs text-indigo-200/80">Status: {todo.status}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-indigo-300/70">#{todo.id}</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleCycleStatus(todo.id, todo.status)}
+                    className="px-3 py-1 text-xs rounded-md border border-indigo-400/40 bg-indigo-500/15 hover:bg-indigo-500/30 transition-colors"
+                  >
+                    Cycle status
+                  </button>
+                </div>
               </div>
             </li>
           ))}
+          {isLoading && (
+            <li className="text-center py-8 text-indigo-300/70">Loading todos...</li>
+          )}
           {todos.length === 0 && (
             <li className="text-center py-8 text-indigo-300/70">
               No todos yet. Create one below!

@@ -24,6 +24,8 @@ export type ExportTodoNode = {
   description: string;
   status: "todo" | "in_progress" | "completed";
   tagId: number | null;
+  assignee: string | null;
+  assigneeLease: string | null;
   workNotes: string | null;
   priority: number | null;
   dueDate: string | null;

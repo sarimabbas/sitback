@@ -24,6 +24,8 @@ CREATE TABLE `todos` (
 	`description` text NOT NULL,
 	`tag_id` integer,
 	`status` text DEFAULT 'todo' NOT NULL,
+	`assignee` text,
+	`assignee_lease` text,
 	`work_notes` text,
 	`priority` integer,
 	`due_date` text,

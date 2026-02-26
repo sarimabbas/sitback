@@ -44,6 +44,8 @@ export const todosTable = sqliteTable(
     description: text().notNull(),
     tagId: int("tag_id"),
     status: text({ enum: todoStatusValues }).notNull().default("todo"),
+    assignee: text(),
+    assigneeLease: text("assignee_lease"),
     workNotes: text("work_notes"),
     priority: int(),
     dueDate: text("due_date"),

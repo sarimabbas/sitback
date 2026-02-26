@@ -18,6 +18,7 @@ flowchart TD
     CmdExportShell[src/commands/export/command.ts]
     CmdInitShell[src/commands/init/command.ts]
     CmdAdd[runAddCommand]
+    CmdClaim[runClaimCommand]
     CmdDelete[runDeleteCommand]
     CmdUpdate[runUpdateCommand]
     CmdGet[runGetCommand]
@@ -78,6 +79,7 @@ flowchart TD
     QTReady[getReadyTodos]
     QTByIds[getTodosByIds]
     QTNext[getNextTodos]
+    QTClaim[claimTodo]
     QTForGet[getTodosForGet]
     QTAdd[addTodo]
     QTUpdateRel[updateTodoWithRelations]
@@ -110,7 +112,7 @@ flowchart TD
   end
 
   Migrations[drizzle/*.sql\nDDL + constraints + triggers]
-  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/update.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
+  Tests[test/db.test.ts + test/commands/add.test.ts + test/commands/claim.test.ts + test/commands/update.test.ts + test/commands/delete.test.ts + test/commands/get.test.ts + test/commands/tag.test.ts\nintegration tests]
 
   CInit --> DLInit
   CAssert --> DLAssert
@@ -123,6 +125,7 @@ flowchart TD
   CExport --> CmdExportShell
   CInitCmd --> CmdInitShell
   CmdTodoShell --> CmdAdd
+  CmdTodoShell --> CmdClaim
   CmdTodoShell --> CmdGet
   CmdTodoShell --> CmdUpdate
   CmdTodoShell --> CmdDelete
@@ -147,6 +150,7 @@ flowchart TD
 
   CmdAdd --> CmdShared
   CmdAdd --> CmdTypes
+  CmdClaim --> CmdShared
   CmdUpdate --> CmdShared
   CmdUpdate --> CmdTypes
   CmdDelete --> CmdShared
@@ -159,6 +163,7 @@ flowchart TD
   CmdExport --> CmdMarkdown
 
   CmdAdd --> QTAdd
+  CmdClaim --> QTClaim
   CmdUpdate --> QTUpdate
   CmdUpdate --> QTUpdateRel
   CmdUpdate --> QGResolve
@@ -189,6 +194,8 @@ flowchart TD
   QTSelect --> QTBlockedExpr
   QTSelect --> QTMap
   QTForGet --> QTSort
+  QTClaim --> QTGetById
+  QTClaim --> QTSort
   QTNext --> QTForGet
 
   CmdExport --> QEGet
@@ -239,3 +246,5 @@ flowchart TD
 - Tag path upsert is centralized in `ensureTagPath` and reused by `addTodo`.
 - Migration SQL (`drizzle/*.sql`) is applied by `sb init` (via `runMigrations`), not by default command startup.
 - `@sitback/db` exposes explicit runtime entrypoints: `@sitback/db/bun` (Bun SQLite for CLI/binary usage) and `@sitback/db/web` (better-sqlite3 for web server runtime), with shared lifecycle helpers in `@sitback/db/lifecycle`.
+- Web todo demo data plumbing is now split into `packages/web/src/server/todos.ts` (server functions for fetch/create/status update) and `packages/web/src/db-collections/todos.ts` (TanStack DB Query Collection with polling refetch plus optimistic status persistence), consumed by `packages/web/src/routes/demo/drizzle.tsx` via `useLiveQuery`.
+- Multi-agent orchestration guidance lives in `skills/sitback-session-memory/SKILL.md`; it uses direct `sb todo add/update` patterns for planner/worker checkpoints, DAG dependencies, and bounded parallelism.
