@@ -146,7 +146,26 @@ export async function getTodosByIds(db: DbClient, ids: number[]) {
   return uniqueIds.map((id) => rowsById.get(id)).filter((todo): todo is NonNullable<typeof todo> => todo !== undefined);
 }
 
-function claimableConditions(options: { id?: number }) {
+function tagSubtreeCondition(tagColumn: unknown, tagId: number) {
+  // Recursive CTE walkthrough:
+  // 1) Seed descendants with the requested tagId.
+  // 2) Repeatedly add tags whose parent_id is already in descendants.
+  // 3) Stop when no new children are found.
+  // The final set contains tagId + all nested children, so filters/claims scoped
+  // to a lane tag automatically include its full subtree.
+  return sql`${tagColumn} in (
+    with recursive descendants(id) as (
+      select ${tagId}
+      union all
+      select t.id
+      from tags t
+      join descendants d on t.parent_id = d.id
+    )
+    select id from descendants
+  )`;
+}
+
+function claimableConditions(options: { id?: number; tagId?: number }) {
   const conditions = [
     sql`${todosTable.status} != 'completed'`,
     sql`not (${blockedExistsSql(todosTable.id)})`,
@@ -155,6 +174,10 @@ function claimableConditions(options: { id?: number }) {
 
   if (options.id !== undefined) {
     conditions.push(eq(todosTable.id, options.id) as unknown as ReturnType<typeof sql>);
+  }
+
+  if (options.tagId !== undefined) {
+    conditions.push(tagSubtreeCondition(todosTable.tagId, options.tagId));
   }
 
   return conditions;
@@ -166,9 +189,24 @@ export async function claimTodo(
     assignee: string;
     leaseMinutes: number;
     id?: number;
+    tagId?: number;
   }
 ) {
   const leaseExpr = sql<string>`datetime('now', '+' || ${input.leaseMinutes} || ' minutes')`;
+
+  const tagFilterSql =
+    input.tagId !== undefined
+      ? sql`and c.tag_id in (
+          with recursive descendants(id) as (
+            select ${input.tagId}
+            union all
+            select t.id
+            from tags t
+            join descendants d on t.parent_id = d.id
+          )
+          select id from descendants
+        )`
+      : sql``;
 
   if (input.id !== undefined) {
     const [claimed] = await db
@@ -178,7 +216,7 @@ export async function claimTodo(
         assignee: input.assignee,
         assigneeLease: leaseExpr
       })
-      .where(and(...claimableConditions({ id: input.id })))
+      .where(and(...claimableConditions({ id: input.id, tagId: input.tagId })))
       .returning({ id: todosTable.id });
 
     if (!claimed) {
@@ -207,6 +245,7 @@ export async function claimTodo(
             and p.status != 'completed'
         )
         and (c.assignee is null or (c.assignee is not null and c.assignee_lease <= CURRENT_TIMESTAMP))
+        ${tagFilterSql}
       order by coalesce(c.due_date, '9999-12-31') asc, coalesce(c.priority, 0) desc, c.id asc
       limit 1
     )`)

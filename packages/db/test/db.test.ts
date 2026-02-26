@@ -291,6 +291,65 @@ describe("db schema", () => {
     expect(claimed.assignee).toBe("worker-2");
   });
 
+  test("claimTodo can scope default claim by tag subtree", async () => {
+    const work = requireValue(await createTag(db, { name: "work" }), "Expected work tag");
+    const frontend = requireValue(
+      await createTag(db, { name: "frontend", parentId: work.id }),
+      "Expected frontend tag"
+    );
+    const backend = requireValue(
+      await createTag(db, { name: "backend", parentId: work.id }),
+      "Expected backend tag"
+    );
+
+    const frontendTodo = requireValue(
+      await createTodo(db, { description: "frontend", status: "todo", tagId: frontend.id, dueDate: "2030-02-01" }),
+      "Expected frontend todo"
+    );
+    requireValue(
+      await createTodo(db, { description: "backend", status: "todo", tagId: backend.id, dueDate: "2030-01-01" }),
+      "Expected backend todo"
+    );
+
+    const claimed = requireValue(
+      await claimTodo(db, {
+        assignee: "worker-tag",
+        leaseMinutes: 10,
+        tagId: frontend.id
+      }),
+      "Expected claimed todo"
+    );
+
+    expect(claimed.id).toBe(frontendTodo.id);
+    expect(claimed.assignee).toBe("worker-tag");
+  });
+
+  test("claimTodo returns undefined when requested todo is outside tag filter", async () => {
+    const work = requireValue(await createTag(db, { name: "work" }), "Expected work tag");
+    const frontend = requireValue(
+      await createTag(db, { name: "frontend", parentId: work.id }),
+      "Expected frontend tag"
+    );
+    const backend = requireValue(
+      await createTag(db, { name: "backend", parentId: work.id }),
+      "Expected backend tag"
+    );
+
+    const backendTodo = requireValue(
+      await createTodo(db, { description: "backend", status: "todo", tagId: backend.id }),
+      "Expected backend todo"
+    );
+
+    const claimed = await claimTodo(db, {
+      assignee: "worker-tag",
+      leaseMinutes: 10,
+      id: backendTodo.id,
+      tagId: frontend.id
+    });
+
+    expect(claimed).toBeUndefined();
+  });
+
   test("getTodosForGet applies blocked, min-priority, and due date filters", async () => {
     const blocker = requireValue(
       await createTodo(db, {

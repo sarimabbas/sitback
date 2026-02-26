@@ -245,3 +245,5 @@ flowchart TD
 - Migration SQL (`drizzle/*.sql`) is applied by `sb init` (via `runMigrations`), not by default command startup.
 - `@sitback/db` exposes explicit runtime entrypoints: `@sitback/db/bun` (Bun SQLite for CLI/binary usage) and `@sitback/db/web` (better-sqlite3 for web server runtime), with shared lifecycle helpers in `@sitback/db/lifecycle`.
 - Web todo demo data plumbing is now split into `packages/web/src/server/todos.ts` (server functions for fetch/create/status update) and `packages/web/src/db-collections/todos.ts` (TanStack DB Query Collection with polling refetch plus optimistic status persistence), consumed by `packages/web/src/routes/demo/drizzle.tsx` via `useLiveQuery`.
+- `sb todo claim` is the atomic worker-queue entrypoint and now supports optional lane scoping via `--tag` / `--tag-id`, implemented in `packages/cli/src/todos/claim.ts` and `packages/db/src/queries/todos.ts`.
+- Multi-agent sitback skill content lives under `packages/skills/sitback-session-memory/` with a short router in `SKILL.md` and role-specific guides in `references/planner.md` and `references/worker.md`.

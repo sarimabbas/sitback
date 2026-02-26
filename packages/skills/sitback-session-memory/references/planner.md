@@ -2,6 +2,11 @@
 
 Use this when you are decomposing work, spawning workers, and controlling integration quality.
 
+Lane definition:
+
+- A lane is a tag-based work stream (for example `planner/session-x/impl`, `planner/session-x/eval`, `planner/session-x/synth`).
+- Lanes separate different kinds of work so workers can pull from the right queue.
+
 ## TOC
 
 - Start the run
@@ -32,7 +37,7 @@ bun run packages/cli/src/index.ts todo add \
 ## 2) Pick mode: assigned vs pull queue
 
 - Assigned mode: planner gives each worker a specific `TODO_ID`.
-- Pull queue mode: workers fetch work with `todo claim`.
+- Pull queue mode: workers fetch work with `todo claim` (usually lane-scoped via `--tag`).
 
 For native subagents, prefer assigned mode.
 For worker pools, prefer pull queue mode.
@@ -102,13 +107,16 @@ bun run packages/cli/src/index.ts todo add --description "reduce: synthesize map
 Set limits before spawning:
 
 - `global_cap`: max in-progress packets
-- `lane_cap`: max in-progress per lane/tag
 - `synthesis_cap`: usually `1`
 
 Suggested defaults:
 
-- small repo: `global_cap=2`, `lane_cap=1`
-- medium repo: `global_cap=4`, `lane_cap=2`
+- small repo: `global_cap=2`
+- medium repo: `global_cap=4`
+
+Queue-mode enforcement tip:
+
+- Use lane-scoped claims like `todo claim --assignee <worker> --tag planner/<session>/<lane>` so workers stay in their intended queue.
 
 ## 6) Contracts and quality gates
 

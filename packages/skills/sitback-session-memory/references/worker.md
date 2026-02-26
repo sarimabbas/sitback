@@ -28,7 +28,7 @@ bun run packages/cli/src/index.ts todo update --id <TODO_ID> --status completed 
 Use atomic claim:
 
 ```bash
-claimed="$(bun run packages/cli/src/index.ts todo claim --assignee worker-3 --lease-minutes 20)"
+claimed="$(bun run packages/cli/src/index.ts todo claim --assignee worker-3 --tag planner/session-x/impl --lease-minutes 20)"
 
 if [ "$claimed" = "null" ]; then
   sleep 2
@@ -43,6 +43,7 @@ Claim rules:
 - claim returns one claimable todo or `null`
 - claimable means not completed, not blocked, and unassigned or lease-expired
 - claim sets `status=in_progress`, `assignee`, and `assigneeLease`
+- `--tag` / `--tag-id` scopes claims to a tag subtree (preferred for lane routing)
 
 Then run your packet and checkpoint:
 
