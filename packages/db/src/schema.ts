@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
-export const todoStatusValues = ["todo", "in_progress", "completed"] as const;
+export const todoStatusValues = ["todo", "in_progress", "completed", "cancelled"] as const;
 
 export const tagsTable = sqliteTable(
   "tags",
@@ -60,7 +60,7 @@ export const todosTable = sqliteTable(
     }).onDelete("set null"),
     check(
       "todos_status_check",
-      sql`${table.status} in ('todo', 'in_progress', 'completed')`
+      sql`${table.status} in ('todo', 'in_progress', 'completed', 'cancelled')`
     ),
     check(
       "todos_priority_range_check",

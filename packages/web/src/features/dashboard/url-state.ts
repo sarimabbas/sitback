@@ -3,8 +3,9 @@ export type DashboardUrlState = {
   tagId?: number
   untagged?: boolean
   q?: string
-  status?: 'all' | 'todo' | 'in_progress' | 'completed'
+  statuses?: Array<'todo' | 'in_progress' | 'completed' | 'cancelled'>
   blocked?: 'all' | 'blocked' | 'unblocked'
+  assignee?: string
   tag?: string
   sortBy?: 'id' | 'description' | 'status' | 'priority' | 'dueDate' | 'dependencies' | 'tag' | 'blocked'
   sortDir?: 'asc' | 'desc'
@@ -37,6 +38,29 @@ function parseStringUnion<T extends string>(
   return allowed.includes(value as T) ? (value as T) : undefined
 }
 
+function parseStatusFilters(value: unknown): DashboardUrlState['statuses'] {
+  const allowed = ['todo', 'in_progress', 'completed', 'cancelled'] as const
+
+  const normalizedValues = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : []
+
+  const statuses = normalizedValues
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item): item is (typeof allowed)[number] =>
+      allowed.includes(item as (typeof allowed)[number]),
+    )
+
+  if (statuses.length === 0) {
+    return undefined
+  }
+
+  return Array.from(new Set(statuses))
+}
+
 export function validateDashboardSearch(
   search: Record<string, unknown>,
 ): DashboardUrlState {
@@ -50,13 +74,20 @@ export function validateDashboardSearch(
   const q = typeof search.q === 'string' ? search.q : undefined
   const tag = typeof search.tag === 'string' ? search.tag : undefined
 
-  const status =
-    parseStringUnion(search.status, ['all', 'todo', 'in_progress', 'completed'] as const) ??
-    'all'
+  const statuses = parseStatusFilters(search.statuses)
+  const legacyStatus = parseStringUnion(
+    search.status,
+    ['all', 'todo', 'in_progress', 'completed', 'cancelled'] as const,
+  )
+  const mergedStatuses =
+    statuses ??
+    (legacyStatus && legacyStatus !== 'all' ? [legacyStatus] : undefined)
 
   const blocked =
     parseStringUnion(search.blocked, ['all', 'blocked', 'unblocked'] as const) ??
     'all'
+
+  const assignee = typeof search.assignee === 'string' ? search.assignee : undefined
 
   const sortBy = parseStringUnion(
     search.sortBy,
@@ -70,8 +101,9 @@ export function validateDashboardSearch(
     tagId,
     untagged,
     q,
-    status,
+    statuses: mergedStatuses,
     blocked,
+    assignee,
     tag,
     sortBy,
     sortDir,
@@ -94,11 +126,14 @@ export function applyDashboardSearchPatch(
   if (!next.tag) {
     delete next.tag
   }
-  if (next.status === 'all') {
-    delete next.status
+  if (!next.statuses || next.statuses.length === 0) {
+    delete next.statuses
   }
   if (next.blocked === 'all') {
     delete next.blocked
+  }
+  if (!next.assignee) {
+    delete next.assignee
   }
   if (!next.sortBy) {
     delete next.sortBy

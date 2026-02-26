@@ -178,4 +178,14 @@ describe("cli todo update", () => {
     const rows = Bun.JSON5.parse(fetched.stdout) as Array<Record<string, unknown>>;
     expect(rows[0]?.isBlocked).toBe(false);
   });
+
+  test("supports setting status to cancelled", () => {
+    runCli(["todo", "add", "--description", "to-cancel", "--status", "todo"], configDir);
+
+    const result = runCli(["todo", "update", "--id", "1", "--status", "cancelled"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    const todo = Bun.JSON5.parse(result.stdout) as Record<string, unknown>;
+    expect(todo.status).toBe("cancelled");
+  });
 });

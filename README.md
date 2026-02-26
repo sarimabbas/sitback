@@ -1,6 +1,6 @@
 # sitback
 
-![relax](./docs/relax.gif)
+![relax](./docs/relax.png)
 
 > @pokithehamster
 

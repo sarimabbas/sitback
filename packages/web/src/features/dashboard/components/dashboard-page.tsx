@@ -1,4 +1,4 @@
-import { GitBranch, Plus, Sparkles, Tag } from 'lucide-react'
+import { GitBranch, Plus, Tag } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { SortingState, Updater } from '@tanstack/react-table'
 import { toast } from 'sonner'
@@ -18,7 +18,14 @@ import { TodoGraphView } from './todo-graph-view'
 import { TodoListTable } from './todo-list-table'
 import { TodoModal } from './todo-modal'
 import { ViewToggle } from './view-toggle'
-import { buildTagPathMap, filterTodosByTagScope, getTagScopeIds } from '../lib/filtering'
+import { DashboardFiltersBar } from './dashboard-filters-bar'
+import {
+  buildTagPathMap,
+  filterDashboardTodos,
+  filterTodosByTagScope,
+  flattenTagTree,
+  getTagScopeIds,
+} from '../lib/filtering'
 import { useDashboardData } from '../hooks/use-dashboard-data'
 import type { DashboardTodo } from '../types'
 import type { DashboardUrlState } from '../url-state'
@@ -35,7 +42,7 @@ function getPredecessorIds(
 
 function normalizeSorting(search: DashboardUrlState): SortingState {
   if (!search.sortBy) {
-    return []
+    return [{ id: 'id', desc: true }]
   }
 
   return [
@@ -61,8 +68,9 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
   const selectedTagId = search.tagId ?? null
   const selectedUntagged = search.untagged === true
   const query = search.q ?? ''
-  const statusFilter = search.status ?? 'all'
+  const statusFilters = search.statuses ?? []
   const blockedFilter = search.blocked ?? 'all'
+  const assigneeFilter = search.assignee ?? ''
   const tagFilterPath = search.tag ?? ''
   const sorting = normalizeSorting(search)
 
@@ -102,12 +110,60 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
   const visibleTodos = selectedUntagged
     ? todosWithComputedBlocked.filter((todo) => todo.tagId === null)
     : scopedTodos
-  const visibleTodoIds = new Set(visibleTodos.map((todo) => todo.id))
+  const tagOptions = flattenTagTree(data.tagTree)
+  const tagPaths = tagOptions.map((tag) => tag.path)
 
-  const visibleDependencies = data.dependencies.filter(
+  const assigneeOptions = Array.from(
+    new Set(
+      visibleTodos
+        .map((todo) => todo.assignee)
+        .filter((assignee): assignee is string => Boolean(assignee && assignee.trim() !== '')),
+    ),
+  ).sort((a, b) => a.localeCompare(b))
+
+  const filteredTodos = filterDashboardTodos(visibleTodos, tagPathMap, {
+    query,
+    statusFilters,
+    blockedFilter,
+    assigneeFilter,
+    tagFilterPath,
+  })
+
+  const filteredTodoIds = new Set(filteredTodos.map((todo) => todo.id))
+
+  const filteredDependencies = data.dependencies.filter(
     (dependency) =>
-      visibleTodoIds.has(dependency.predecessorId) &&
-      visibleTodoIds.has(dependency.successorId),
+      filteredTodoIds.has(dependency.predecessorId) &&
+      filteredTodoIds.has(dependency.successorId),
+  )
+
+  const visibleTodoById = new Map(visibleTodos.map((todo) => [todo.id, todo]))
+  const graphTodoIds = new Set(filteredTodoIds)
+  for (const dependency of data.dependencies) {
+    const successorInFilteredSet = filteredTodoIds.has(dependency.successorId)
+    const predecessorInFilteredSet = filteredTodoIds.has(dependency.predecessorId)
+
+    if (successorInFilteredSet || predecessorInFilteredSet) {
+      if (visibleTodoById.has(dependency.successorId)) {
+        graphTodoIds.add(dependency.successorId)
+      }
+      if (visibleTodoById.has(dependency.predecessorId)) {
+        graphTodoIds.add(dependency.predecessorId)
+      }
+    }
+  }
+
+  const graphTodos = Array.from(graphTodoIds)
+    .map((id) => visibleTodoById.get(id))
+    .filter((todo): todo is DashboardTodo => Boolean(todo))
+    .map((todo) => ({
+      ...todo,
+      isContext: !filteredTodoIds.has(todo.id),
+    }))
+
+  const graphDependencies = data.dependencies.filter(
+    (dependency) =>
+      graphTodoIds.has(dependency.predecessorId) && graphTodoIds.has(dependency.successorId),
   )
 
   const selectedTodo = search.todoId
@@ -193,6 +249,22 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
     toast.success('Todo deleted')
   }
 
+  const handleBulkDeleteTodos = async (ids: number[]) => {
+    if (ids.length === 0) {
+      return
+    }
+
+    for (const id of ids) {
+      await dashboardTodosCollection.delete(id)
+      if (search.todoId === id) {
+        setSearch({ todoId: undefined })
+      }
+    }
+
+    await refetchMetadata()
+    toast.success(`Deleted ${ids.length} todos`)
+  }
+
   const handleSetPredecessors = async (id: number, predecessorIds: number[]) => {
     await setDashboardTodoPredecessors({
       data: {
@@ -268,34 +340,24 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
         />
 
         <section className="flex min-h-0 flex-col gap-3 overflow-hidden">
-          <header className="rounded-xl border border-slate-200 bg-gradient-to-r from-white via-white to-sky-50/40 p-3 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1">
-                <p className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/80 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-600">
-                  <Sparkles className="size-3" />
-                  Workspace
-                </p>
-                <h1 className="text-xl font-semibold text-slate-900">Sitback Dashboard</h1>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                  <span className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-cyan-800">
-                    <Tag className="size-3" />
-                    {scopeLabel}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-1.5 py-0.5">
-                    <GitBranch className="size-3" />
-                    {visibleDependencies.length} links
-                  </span>
-                </div>
+          <header className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <h1 className="text-base font-semibold text-slate-900">Dashboard</h1>
+                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-xs text-cyan-800">
+                  <Tag className="size-3" />
+                  {scopeLabel}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs">
+                  <GitBranch className="size-3" />
+                  {viewMode === 'graph' ? graphDependencies.length : filteredDependencies.length} links
+                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-slate-300 bg-white/80">
-                  {visibleTodos.length} todos
+                <Badge variant="outline" className="border-slate-300 bg-white text-xs">
+                  {viewMode === 'graph' ? graphTodos.length : filteredTodos.length} todos
                 </Badge>
-                <Badge variant="outline" className="border-slate-300 bg-white/80">
-                  {visibleDependencies.length} edges
-                </Badge>
-                <div className="h-6 w-px bg-slate-200" />
                 <Button
                   type="button"
                   size="sm"
@@ -306,7 +368,7 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
                   }}
                 >
                   <Plus className="size-4" />
-                  Add Todo
+                  Add
                 </Button>
                 <ViewToggle
                   value={viewMode}
@@ -316,31 +378,39 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
             </div>
           </header>
 
+          <DashboardFiltersBar
+            query={query}
+            statusFilters={statusFilters}
+            blockedFilter={blockedFilter}
+            assigneeFilter={assigneeFilter}
+            assigneeOptions={assigneeOptions}
+            tagFilterPath={tagFilterPath}
+            tagPaths={tagPaths}
+            onQueryChange={(value) => setSearch({ q: value })}
+            onStatusFiltersChange={(value) => setSearch({ statuses: value })}
+            onBlockedFilterChange={(value) => setSearch({ blocked: value })}
+            onAssigneeFilterChange={(value) => setSearch({ assignee: value })}
+            onTagFilterPathChange={(value) => setSearch({ tag: value.toLowerCase() })}
+          />
+
           <div className="min-h-0 flex-1">
             {viewMode === 'list' ? (
             <TodoListTable
-              todos={visibleTodos}
-              dependencies={visibleDependencies}
+              todos={filteredTodos}
+              dependencies={filteredDependencies}
               tagTree={data.tagTree}
               selectedTagPath={selectedTagPath}
-              query={query}
-              statusFilter={statusFilter}
-              blockedFilter={blockedFilter}
-              tagFilterPath={tagFilterPath}
               sorting={sorting}
-              onQueryChange={(value) => setSearch({ q: value })}
-              onStatusFilterChange={(value) => setSearch({ status: value })}
-              onBlockedFilterChange={(value) => setSearch({ blocked: value })}
-              onTagFilterPathChange={(value) => setSearch({ tag: value.toLowerCase() })}
               onSortingChange={handleSortingChange}
               onFocusTodo={(todoId) => setSearch({ todoId })}
               onSelectTodo={(todo) => setSearch({ todoId: todo.id })}
               onDeleteTodo={handleDeleteTodo}
+              onBulkDeleteTodos={handleBulkDeleteTodos}
             />
           ) : (
             <TodoGraphView
-              todos={visibleTodos}
-              dependencies={visibleDependencies}
+              todos={graphTodos}
+              dependencies={graphDependencies}
               tagTree={data.tagTree}
               selectedTagPath={selectedTagPath}
               onSelectTodo={(todoId) => setSearch({ todoId })}

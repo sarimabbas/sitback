@@ -1,4 +1,12 @@
-import type { DashboardTagNode, DashboardTodo } from '../types'
+import type { DashboardTagNode, DashboardTodo, DashboardTodoStatus } from '../types'
+
+export type DashboardTodoFilters = {
+  query: string
+  statusFilters: DashboardTodoStatus[]
+  blockedFilter: 'all' | 'blocked' | 'unblocked'
+  assigneeFilter: string
+  tagFilterPath: string
+}
 
 function findTagNodeById(
   nodes: DashboardTagNode[],
@@ -87,5 +95,61 @@ export function flattenTagTree(
       },
       ...flattenTagTree(node.children, path),
     ]
+  })
+}
+
+export function filterDashboardTodos(
+  todos: DashboardTodo[],
+  tagPathMap: Map<number, string>,
+  filters: DashboardTodoFilters,
+) {
+  const normalizedQuery = filters.query.trim().toLowerCase()
+  const normalizedTagPath = filters.tagFilterPath.trim().toLowerCase()
+  const statusFilterSet = new Set(filters.statusFilters)
+
+  return todos.filter((todo) => {
+    if (statusFilterSet.size > 0 && !statusFilterSet.has(todo.status)) {
+      return false
+    }
+
+    if (filters.blockedFilter === 'blocked' && !todo.isBlocked) {
+      return false
+    }
+
+    if (filters.blockedFilter === 'unblocked' && todo.isBlocked) {
+      return false
+    }
+
+    if (filters.assigneeFilter === '__unassigned__' && todo.assignee !== null) {
+      return false
+    }
+
+    if (
+      filters.assigneeFilter !== '' &&
+      filters.assigneeFilter !== '__unassigned__' &&
+      todo.assignee !== filters.assigneeFilter
+    ) {
+      return false
+    }
+
+    if (normalizedTagPath !== '') {
+      const path = todo.tagId ? (tagPathMap.get(todo.tagId) ?? '') : ''
+      if (!path.startsWith(normalizedTagPath)) {
+        return false
+      }
+    }
+
+    if (!normalizedQuery) {
+      return true
+    }
+
+    const tagPath = todo.tagId ? (tagPathMap.get(todo.tagId) ?? '') : ''
+
+    return (
+      String(todo.id).includes(normalizedQuery) ||
+      todo.description.toLowerCase().includes(normalizedQuery) ||
+      todo.status.includes(normalizedQuery) ||
+      tagPath.toLowerCase().includes(normalizedQuery)
+    )
   })
 }

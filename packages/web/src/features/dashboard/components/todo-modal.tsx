@@ -251,6 +251,7 @@ export function TodoModal({
                 <SelectItem value="todo">todo</SelectItem>
                 <SelectItem value="in_progress">in_progress</SelectItem>
                 <SelectItem value="completed">completed</SelectItem>
+                <SelectItem value="cancelled">cancelled</SelectItem>
               </SelectContent>
             </Select>
           </div>

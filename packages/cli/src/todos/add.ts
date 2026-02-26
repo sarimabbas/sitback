@@ -4,7 +4,7 @@ import type { DbClient } from "@sitback/db/queries";
 import { parsePositiveInteger, parsePriority } from "../shared";
 import { dateYmdType, tagPathType } from "../types";
 
-type TodoStatus = "todo" | "in_progress" | "completed";
+type TodoStatus = "todo" | "in_progress" | "completed" | "cancelled";
 
 type AddValues = {
   description?: string;
@@ -16,7 +16,7 @@ type AddValues = {
   workNotes?: string;
 };
 
-const todoStatusType = new EnumType(["todo", "in_progress", "completed"] as const);
+const todoStatusType = new EnumType(["todo", "in_progress", "completed", "cancelled"] as const);
 
 export async function runAddCommand(db: DbClient, values: AddValues): Promise<string> {
   const description = values.description?.trim();

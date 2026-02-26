@@ -2,6 +2,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  type ReactFlowInstance,
   type Node,
   type NodeMouseHandler,
   type NodeTypes,
@@ -9,7 +10,7 @@ import {
   useEdgesState,
   useNodesState,
 } from '@xyflow/react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { buildTagPathMap } from '../lib/filtering'
 import { toReactFlowGraph } from '../lib/graph-mapper'
@@ -38,6 +39,8 @@ export function TodoGraphView({
   selectedTagPath,
   onSelectTodo,
 }: TodoGraphViewProps) {
+  const reactFlowRef = useRef<ReactFlowInstance<Node> | null>(null)
+
   const miniMapNodeColor = (node: Node) => {
     if (node.type === 'groupBox') {
       return 'transparent'
@@ -69,16 +72,68 @@ export function TodoGraphView({
     [todos, dependencies, tagPathMap, selectedTagPath],
   )
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(graph.nodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
+  const graphWithHandlers = useMemo(() => {
+    return {
+      edges: graph.edges,
+      nodes: graph.nodes.map((node) => {
+        if (node.type !== 'todoCard') {
+          return node
+        }
+
+        return {
+          ...node,
+          data: {
+            ...(node.data as Record<string, unknown>),
+            onJumpToTodo: (todoId: number) => {
+              if (!reactFlowRef.current) {
+                return
+              }
+
+              void reactFlowRef.current.fitView({
+                nodes: [{ id: String(todoId) }],
+                padding: 0.3,
+                duration: 260,
+              })
+            },
+          },
+        }
+      }),
+    }
+  }, [graph])
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(graphWithHandlers.nodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(graphWithHandlers.edges)
 
   useEffect(() => {
-    setNodes(graph.nodes)
-    setEdges(graph.edges)
-  }, [graph, setNodes, setEdges])
+    setNodes(graphWithHandlers.nodes)
+    setEdges(graphWithHandlers.edges)
+  }, [graphWithHandlers, setNodes, setEdges])
+
+  useEffect(() => {
+    if (!reactFlowRef.current || graph.nodes.length === 0) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      void reactFlowRef.current?.fitView({
+        padding: 0.2,
+        duration: 280,
+      })
+    })
+  }, [graph.nodes.length])
 
   const handleNodeClick: NodeMouseHandler = (_event, node) => {
     onSelectTodo(Number(node.id))
+  }
+
+  if (todos.length === 0) {
+    return (
+      <section className="flex h-full min-h-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+        <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          No todos match the current filters.
+        </p>
+      </section>
+    )
   }
 
   return (
@@ -95,6 +150,9 @@ export function TodoGraphView({
         onNodeClick={handleNodeClick}
         onEdgesChange={onEdgesChange}
         onNodesChange={onNodesChange}
+        onInit={(instance) => {
+          reactFlowRef.current = instance
+        }}
       >
         <MiniMap
           pannable

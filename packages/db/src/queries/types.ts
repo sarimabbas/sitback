@@ -22,7 +22,7 @@ export type ExportTagNode = {
 export type ExportTodoNode = {
   id: number;
   description: string;
-  status: "todo" | "in_progress" | "completed";
+  status: "todo" | "in_progress" | "completed" | "cancelled";
   tagId: number | null;
   assignee: string | null;
   assigneeLease: string | null;

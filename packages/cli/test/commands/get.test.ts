@@ -151,4 +151,87 @@ describe("cli get", () => {
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('Option "--due-before" must use YYYY-MM-DD, but got "2030/01/01"');
   });
+
+  test("filters by status and in-progress shortcut", () => {
+    runCli(["todo", "add", "--description", "queued", "--status", "todo"], configDir);
+    runCli(["todo", "add", "--description", "running", "--status", "in_progress"], configDir);
+    runCli(["todo", "add", "--description", "done", "--status", "completed"], configDir);
+
+    const explicit = runCli(["todo", "get", "--status", "completed"], configDir);
+    expect(explicit.exitCode).toBe(0);
+    const explicitRows = Bun.JSON5.parse(explicit.stdout) as Array<Record<string, unknown>>;
+    expect(explicitRows).toHaveLength(1);
+    expect(explicitRows[0]?.description).toBe("done");
+
+    const shortcut = runCli(["todo", "get", "--in-progress"], configDir);
+    expect(shortcut.exitCode).toBe(0);
+    const shortcutRows = Bun.JSON5.parse(shortcut.stdout) as Array<Record<string, unknown>>;
+    expect(shortcutRows).toHaveLength(1);
+    expect(shortcutRows[0]?.description).toBe("running");
+  });
+
+  test("filters by assignee and lease status", () => {
+    runCli(["todo", "add", "--description", "owned", "--status", "in_progress"], configDir);
+    runCli(["todo", "add", "--description", "free", "--status", "todo"], configDir);
+
+    runCli(
+      [
+        "todo",
+        "update",
+        "--id",
+        "1",
+        "--assignee",
+        "worker-1",
+        "--assignee-lease",
+        "2000-01-01 00:00:00"
+      ],
+      configDir
+    );
+
+    const byAssignee = runCli(["todo", "get", "--assignee", "worker-1"], configDir);
+    expect(byAssignee.exitCode).toBe(0);
+    const byAssigneeRows = Bun.JSON5.parse(byAssignee.stdout) as Array<Record<string, unknown>>;
+    expect(byAssigneeRows).toHaveLength(1);
+    expect(byAssigneeRows[0]?.description).toBe("owned");
+
+    const leaseExpired = runCli(["todo", "get", "--lease-expired", "true"], configDir);
+    expect(leaseExpired.exitCode).toBe(0);
+    const leaseRows = Bun.JSON5.parse(leaseExpired.stdout) as Array<Record<string, unknown>>;
+    expect(leaseRows.map((row) => row.description)).toContain("owned");
+
+    const unassigned = runCli(["todo", "get", "--has-assignee", "false"], configDir);
+    expect(unassigned.exitCode).toBe(0);
+    const unassignedRows = Bun.JSON5.parse(unassigned.stdout) as Array<Record<string, unknown>>;
+    expect(unassignedRows).toHaveLength(1);
+    expect(unassignedRows[0]?.description).toBe("free");
+  });
+
+  test("supports fields projection, sorting, and count output", () => {
+    runCli(["todo", "add", "--description", "a", "--status", "todo", "--priority", "1"], configDir);
+    runCli(["todo", "add", "--description", "b", "--status", "todo", "--priority", "5"], configDir);
+
+    const projected = runCli(["todo", "get", "--fields", "id,description", "--sort-by", "id", "--order", "desc"], configDir);
+    expect(projected.exitCode).toBe(0);
+    const projectedRows = Bun.JSON5.parse(projected.stdout) as Array<Record<string, unknown>>;
+    expect(projectedRows[0]).toEqual({ id: 2, description: "b" });
+    expect(projectedRows[1]).toEqual({ id: 1, description: "a" });
+
+    const count = runCli(["todo", "get", "--count", "--status", "todo"], configDir);
+    expect(count.exitCode).toBe(0);
+    const countPayload = Bun.JSON5.parse(count.stdout) as Record<string, unknown>;
+    expect(countPayload.count).toBe(2);
+  });
+
+  test("supports json and markdown output formats", () => {
+    runCli(["todo", "add", "--description", "md-item", "--status", "todo"], configDir);
+
+    const json = runCli(["todo", "get", "--format", "json"], configDir);
+    expect(json.exitCode).toBe(0);
+    expect(() => JSON.parse(json.stdout)).not.toThrow();
+
+    const markdown = runCli(["todo", "get", "--format", "markdown", "--fields", "id,description"], configDir);
+    expect(markdown.exitCode).toBe(0);
+    expect(markdown.stdout).toContain("id=1");
+    expect(markdown.stdout).toContain("description=md-item");
+  });
 });

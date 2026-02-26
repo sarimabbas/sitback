@@ -5,7 +5,7 @@ export type DashboardTagNode = {
   children: DashboardTagNode[]
 }
 
-export type DashboardTodoStatus = 'todo' | 'in_progress' | 'completed'
+export type DashboardTodoStatus = 'todo' | 'in_progress' | 'completed' | 'cancelled'
 
 export type DashboardTodo = {
   id: number
@@ -20,6 +20,7 @@ export type DashboardTodo = {
   createdAt: string
   updatedAt: string
   isBlocked: boolean
+  isContext?: boolean
   predecessorIds?: number[]
 }
 

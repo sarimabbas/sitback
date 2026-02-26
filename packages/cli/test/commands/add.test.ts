@@ -74,4 +74,15 @@ describe("cli add", () => {
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('Option "--tag" must be a slash-separated path with non-empty segments');
   });
+
+  test("accepts cancelled status", () => {
+    const configDir = createTempConfigDir("sitback-cli-add-");
+    tempDirs.push(configDir);
+
+    const result = runCli(["todo", "add", "--description", "retired", "--status", "cancelled"], configDir);
+
+    expect(result.exitCode).toBe(0);
+    const todo = Bun.JSON5.parse(result.stdout) as Record<string, unknown>;
+    expect(todo.status).toBe("cancelled");
+  });
 });

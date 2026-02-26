@@ -109,6 +109,21 @@ export function toReactFlowGraph(
 } {
   const todoIds = new Set(todos.map((todo) => todo.id))
   const levelById = computeLevels(todos, dependencies)
+  const predecessorMap = new Map<number, number[]>()
+
+  for (const dependency of dependencies) {
+    if (!todoIds.has(dependency.predecessorId) || !todoIds.has(dependency.successorId)) {
+      continue
+    }
+
+    const predecessors = predecessorMap.get(dependency.successorId) ?? []
+    predecessors.push(dependency.predecessorId)
+    predecessorMap.set(dependency.successorId, predecessors)
+  }
+
+  for (const predecessors of predecessorMap.values()) {
+    predecessors.sort((a, b) => a - b)
+  }
 
   const groups = Array.from(
     new Set(
@@ -144,10 +159,10 @@ export function toReactFlowGraph(
 
   const groupOffsetByKey = new Map<string, number>()
   let currentOffset = 0
-  const rowHeight = 198
+  const rowHeight = 244
   const groupGap = 56
   const cardWidth = 320
-  const cardHeight = 164
+  const cardHeight = 206
   const framePaddingX = 42
   const framePaddingYTop = 42
   const framePaddingYBottom = 30
@@ -212,9 +227,11 @@ export function toReactFlowGraph(
         laneType: getLaneType(groupKey),
         tagPath,
         status: todo.status,
+        isContext: todo.isContext ?? false,
         priority: todo.priority,
         dueDate: todo.dueDate,
         blocked: todo.isBlocked,
+        predecessorIds: predecessorMap.get(todo.id) ?? [],
       },
       style: {
         width: cardWidth,

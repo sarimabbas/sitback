@@ -80,9 +80,9 @@ flowchart TD
     QTByIds[getTodosByIds]
     QTClaim[claimTodo]
     QTForGet[getTodosForGet]
+    QTCount[countTodosForGet]
     QTAdd[addTodo]
     QTUpdateRel[updateTodoWithRelations]
-    QTSort[compareTodosForScheduling]
   end
 
   subgraph QTags[src/db/queries/tags.ts]
@@ -184,6 +184,7 @@ flowchart TD
 
   CmdGet --> QTByIds
   CmdGet --> QTForGet
+  CmdGet --> QTCount
   CmdGet --> QGResolve
   CmdGet --> QGById
   QTForGet --> QTSelect
@@ -192,9 +193,7 @@ flowchart TD
   QTGetAll --> QTSelect
   QTSelect --> QTBlockedExpr
   QTSelect --> QTMap
-  QTForGet --> QTSort
   QTClaim --> QTGetById
-  QTClaim --> QTSort
 
   CmdExport --> QEGet
   QEGet --> QGAll

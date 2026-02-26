@@ -32,7 +32,7 @@ CREATE TABLE `todos` (
 	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	FOREIGN KEY (`tag_id`) REFERENCES `tags`(`id`) ON UPDATE no action ON DELETE set null,
-	CONSTRAINT "todos_status_check" CHECK("todos"."status" in ('todo', 'in_progress', 'completed')),
+	CONSTRAINT "todos_status_check" CHECK("todos"."status" in ('todo', 'in_progress', 'completed', 'cancelled')),
 	CONSTRAINT "todos_priority_range_check" CHECK("todos"."priority" is null or ("todos"."priority" between 1 and 5))
 );
 --> statement-breakpoint

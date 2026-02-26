@@ -1,20 +1,14 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { todosTable } from "../schema";
 import type { DbClient, TodoInsert, TodoUpdate } from "./types";
 import { addDependency, replaceTodoPredecessors } from "./dependencies";
 import { ensureTagPath } from "./tags";
 
-type SchedulableTodo = {
-  id: number;
-  dueDate: string | null;
-  priority: number | null;
-};
-
 type TodoRowWithBlocked = {
   id: number;
   description: string;
   tagId: number | null;
-  status: "todo" | "in_progress" | "completed";
+  status: "todo" | "in_progress" | "completed" | "cancelled";
   assignee: string | null;
   assigneeLease: string | null;
   workNotes: string | null;
@@ -25,23 +19,9 @@ type TodoRowWithBlocked = {
   isBlocked: number;
 };
 
-function compareTodosForScheduling(a: SchedulableTodo, b: SchedulableTodo): number {
-  const aDueDate = a.dueDate ?? "9999-12-31";
-  const bDueDate = b.dueDate ?? "9999-12-31";
-
-  if (aDueDate !== bDueDate) {
-    return aDueDate.localeCompare(bDueDate);
-  }
-
-  const aPriority = a.priority ?? 0;
-  const bPriority = b.priority ?? 0;
-
-  if (aPriority !== bPriority) {
-    return bPriority - aPriority;
-  }
-
-  return a.id - b.id;
-}
+type TodoStatus = "todo" | "in_progress" | "completed" | "cancelled";
+type TodoGetSortBy = "id" | "priority" | "due_date" | "created_at" | "updated_at";
+type TodoGetSortOrder = "asc" | "desc";
 
 function blockedExistsSql(todoIdExpr: unknown) {
   return sql`exists (
@@ -75,6 +55,100 @@ function mapBlocked(row: TodoRowWithBlocked) {
     ...row,
     isBlocked: row.isBlocked === 1
   };
+}
+
+function buildGetConditions(
+  options: {
+    blocked?: boolean;
+    statuses?: TodoStatus[];
+    minPriority?: number;
+    dueBefore?: string;
+    dueAfter?: string;
+    tagId?: number;
+    assignee?: string;
+    hasAssignee?: boolean;
+    leaseExpired?: boolean;
+  },
+  blockedExpr: ReturnType<typeof sql>
+) {
+  const conditions = [] as ReturnType<typeof sql>[];
+
+  if (options.statuses && options.statuses.length > 0) {
+    conditions.push(inArray(todosTable.status, options.statuses) as unknown as ReturnType<typeof sql>);
+  }
+
+  if (options.blocked !== undefined) {
+    conditions.push(options.blocked ? blockedExpr : sql`not (${blockedExpr})`);
+  }
+
+  if (options.minPriority !== undefined) {
+    conditions.push(sql`${todosTable.priority} is not null and ${todosTable.priority} >= ${options.minPriority}`);
+  }
+
+  if (options.dueBefore) {
+    conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} <= ${options.dueBefore}`);
+  }
+
+  if (options.dueAfter) {
+    conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} >= ${options.dueAfter}`);
+  }
+
+  if (options.tagId !== undefined) {
+    conditions.push(tagSubtreeCondition(todosTable.tagId, options.tagId));
+  }
+
+  if (options.assignee !== undefined) {
+    conditions.push(eq(todosTable.assignee, options.assignee) as unknown as ReturnType<typeof sql>);
+  }
+
+  if (options.hasAssignee !== undefined) {
+    conditions.push(
+      options.hasAssignee ? sql`${todosTable.assignee} is not null` : sql`${todosTable.assignee} is null`
+    );
+  }
+
+  if (options.leaseExpired !== undefined) {
+    conditions.push(
+      options.leaseExpired
+        ? sql`${todosTable.assigneeLease} is not null and ${todosTable.assigneeLease} <= CURRENT_TIMESTAMP`
+        : sql`${todosTable.assigneeLease} is null or ${todosTable.assigneeLease} > CURRENT_TIMESTAMP`
+    );
+  }
+
+  return conditions;
+}
+
+function getOrderByClauses(sortBy?: TodoGetSortBy, sortOrder?: TodoGetSortOrder) {
+  const order = sortOrder ?? "asc";
+  const idTieBreaker = asc(todosTable.id);
+
+  if (!sortBy) {
+    return [
+      sql`coalesce(${todosTable.dueDate}, '9999-12-31') asc`,
+      sql`coalesce(${todosTable.priority}, 0) desc`,
+      idTieBreaker
+    ] as const;
+  }
+
+  const direction = order === "asc" ? asc : desc;
+
+  if (sortBy === "due_date") {
+    return [direction(sql`coalesce(${todosTable.dueDate}, '9999-12-31')`), idTieBreaker] as const;
+  }
+
+  if (sortBy === "priority") {
+    return [direction(sql`coalesce(${todosTable.priority}, 0)`), idTieBreaker] as const;
+  }
+
+  if (sortBy === "created_at") {
+    return [direction(todosTable.createdAt), idTieBreaker] as const;
+  }
+
+  if (sortBy === "updated_at") {
+    return [direction(todosTable.updatedAt), idTieBreaker] as const;
+  }
+
+  return [direction(todosTable.id)] as const;
 }
 
 export async function createTodo(db: DbClient, todo: TodoInsert) {
@@ -167,7 +241,7 @@ function tagSubtreeCondition(tagColumn: unknown, tagId: number) {
 
 function claimableConditions(options: { id?: number; tagId?: number }) {
   const conditions = [
-    sql`${todosTable.status} != 'completed'`,
+    inArray(todosTable.status, ["todo", "in_progress"]),
     sql`not (${blockedExistsSql(todosTable.id)})`,
     sql`(${todosTable.assignee} is null or (${todosTable.assignee} is not null and ${todosTable.assigneeLease} <= CURRENT_TIMESTAMP))`
   ] as ReturnType<typeof sql>[];
@@ -236,7 +310,7 @@ export async function claimTodo(
     .where(sql`${todosTable.id} = (
       select c.id
       from todos c
-      where c.status != 'completed'
+      where c.status in ('todo', 'in_progress')
         and not exists (
           select 1
           from todo_dependencies d
@@ -263,68 +337,61 @@ export async function getTodosForGet(
   options: {
     limit: number;
     blocked?: boolean;
-    statuses?: Array<"todo" | "in_progress" | "completed">;
+    statuses?: TodoStatus[];
     minPriority?: number;
     dueBefore?: string;
     dueAfter?: string;
     tagId?: number;
+    assignee?: string;
+    hasAssignee?: boolean;
+    leaseExpired?: boolean;
+    sortBy?: TodoGetSortBy;
+    sortOrder?: TodoGetSortOrder;
   }
 ) {
-  const conditions = [] as ReturnType<typeof sql>[];
   const blockedExpr = blockedExistsSql(todosTable.id);
-
-  if (options.statuses && options.statuses.length > 0) {
-    conditions.push(inArray(todosTable.status, options.statuses) as unknown as ReturnType<typeof sql>);
-  }
-
-  if (options.blocked !== undefined) {
-    conditions.push(options.blocked ? blockedExpr : sql`not (${blockedExpr})`);
-  }
-
-  if (options.minPriority !== undefined) {
-    conditions.push(sql`${todosTable.priority} is not null and ${todosTable.priority} >= ${options.minPriority}`);
-  }
-
-  if (options.dueBefore) {
-    conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} <= ${options.dueBefore}`);
-  }
-
-  if (options.dueAfter) {
-    conditions.push(sql`${todosTable.dueDate} is not null and ${todosTable.dueDate} >= ${options.dueAfter}`);
-  }
-
-  if (options.tagId !== undefined) {
-    conditions.push(sql`${todosTable.tagId} in (
-      with recursive descendants(id) as (
-        select ${options.tagId}
-        union all
-        select t.id
-        from tags t
-        join descendants d on t.parent_id = d.id
-      )
-      select id from descendants
-    )`);
-  }
+  const conditions = buildGetConditions(options, blockedExpr);
 
   const rows = await db
     .select(todosWithBlockedSelection())
     .from(todosTable)
     .where(conditions.length === 0 ? undefined : and(...conditions))
-    .orderBy(
-      sql`coalesce(${todosTable.dueDate}, '9999-12-31') asc`,
-      sql`coalesce(${todosTable.priority}, 0) desc`,
-      asc(todosTable.id)
-    )
+    .orderBy(...getOrderByClauses(options.sortBy, options.sortOrder))
     .limit(options.limit);
 
-  return rows.map(mapBlocked).sort(compareTodosForScheduling);
+  return rows.map(mapBlocked);
+}
+
+export async function countTodosForGet(
+  db: DbClient,
+  options: {
+    blocked?: boolean;
+    statuses?: TodoStatus[];
+    minPriority?: number;
+    dueBefore?: string;
+    dueAfter?: string;
+    tagId?: number;
+    assignee?: string;
+    hasAssignee?: boolean;
+    leaseExpired?: boolean;
+  }
+) {
+  const blockedExpr = blockedExistsSql(todosTable.id);
+  const conditions = buildGetConditions(options, blockedExpr);
+
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(todosTable)
+    .where(conditions.length === 0 ? undefined : and(...conditions));
+
+  return result?.count ?? 0;
 }
 
 export async function addTodo(
   db: DbClient,
   input: {
     description: string;
-    status?: "todo" | "in_progress" | "completed";
+    status?: TodoStatus;
     tagPath?: string;
     predecessorIds?: number[];
     workNotes?: string;

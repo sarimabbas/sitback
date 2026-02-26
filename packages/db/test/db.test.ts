@@ -406,6 +406,29 @@ describe("db schema", () => {
     expect(filteredByPriorityAndDue.some((todo) => todo.id === readyLateLow.id)).toBe(false);
   });
 
+  test("cancelled todos are queryable but not claimable", async () => {
+    const cancelled = requireValue(
+      await createTodo(db, {
+        description: "cancelled task",
+        status: "cancelled"
+      }),
+      "Expected cancelled todo"
+    );
+
+    const filtered = await getTodosForGet(db, {
+      limit: 10,
+      statuses: ["cancelled"]
+    });
+    expect(filtered.map((todo) => todo.id)).toEqual([cancelled.id]);
+
+    const claimed = await claimTodo(db, {
+      assignee: "worker-cancelled",
+      leaseMinutes: 10,
+      id: cancelled.id
+    });
+    expect(claimed).toBeUndefined();
+  });
+
   test("addTodo upserts tag path and attaches predecessors", async () => {
     const predecessorA = requireValue(
       await createTodo(db, { description: "map-a", status: "completed" }),
