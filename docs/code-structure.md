@@ -10,6 +10,7 @@ flowchart TD
     CTag[createTagCommand]
     CExport[createExportCommand]
     CInitCmd[createInitCommand]
+    CWebCmd[createWebCommand]
   end
 
   subgraph Commands[src/commands/*]
@@ -17,6 +18,7 @@ flowchart TD
     CmdTagShell[src/commands/tags/command.ts]
     CmdExportShell[src/commands/export/command.ts]
     CmdInitShell[src/commands/init/command.ts]
+    CmdWebShell[src/commands/web/command.ts]
     CmdAdd[runAddCommand]
     CmdClaim[runClaimCommand]
     CmdDelete[runDeleteCommand]
@@ -28,6 +30,7 @@ flowchart TD
     CmdTagDelete[runTagDeleteCommand]
     CmdExport[runExportCommand]
     CmdInit[runInitCommand]
+    CmdWeb[runWebCommand]
     CmdShared[parsePositiveInteger / parsePriority]
     CmdTypes[dateYmdType / tagPathType / dateTimeSecondType]
     CmdMarkdown[toMarkdown / renderTagMarkdown / renderTodoMarkdown]
@@ -119,10 +122,12 @@ flowchart TD
   CRoot --> CTag
   CRoot --> CExport
   CRoot --> CInitCmd
+  CRoot --> CWebCmd
   CTodo --> CmdTodoShell
   CTag --> CmdTagShell
   CExport --> CmdExportShell
   CInitCmd --> CmdInitShell
+  CWebCmd --> CmdWebShell
   CmdTodoShell --> CmdAdd
   CmdTodoShell --> CmdClaim
   CmdTodoShell --> CmdGet
@@ -134,6 +139,7 @@ flowchart TD
   CmdTagShell --> CmdTagDelete
   CmdExportShell --> CmdExport
   CmdInitShell --> CmdInit
+  CmdWebShell --> CmdWeb
 
   DLInit --> DPragma
   DLInit --> DEnsure
@@ -235,6 +241,7 @@ flowchart TD
 
 - Cliffy root setup and parse flow live directly in `src/index.ts`.
 - `sb init` is the explicit migration entrypoint; normal command execution checks migration state first.
+- `sb web` starts the `@sitback/web` dev server via workspace script and can auto-open the dashboard URL.
 - Commands are grouped by domain under `src/commands/todos/*`, `src/commands/tags/*`, and `src/commands/export/*`.
 - Shared CLI option parsing/validation is centralized in `src/commands/shared.ts`.
 - Cliffy option primitives (`required`, `default`, built-in types, and enum/custom types) are preferred for CLI parsing and help metadata, with `shared.ts` reserved for domain-specific validators.

@@ -3,6 +3,7 @@ import { createExportCommand } from "@/export/command";
 import { createInitCommand } from "@/init/command";
 import { createTagCommand } from "@/tags/command";
 import { createTodoCommand } from "@/todos/command";
+import { createWebCommand } from "@/web/command";
 import { db } from "@sitback/db/bun";
 import {
   assertDatabaseInitialized,
@@ -16,7 +17,7 @@ const args = Bun.argv.slice(2);
 const commandName = args[0];
 
 const shouldCheckDatabase =
-  commandName === "todo" || commandName === "tag" || commandName === "export";
+  commandName === "todo" || commandName === "tag" || commandName === "export" || commandName === "web";
 const isHelpRequest =
   args.length === 0 || args.includes("--help") || args.includes("-h") || commandName === "help";
 
@@ -42,5 +43,6 @@ root.command("todo", createTodoCommand(db));
 root.command("tag", createTagCommand(db));
 root.command("export", createExportCommand(db));
 root.command("init", createInitCommand());
+root.command("web", createWebCommand());
 
 await root.parse(args);

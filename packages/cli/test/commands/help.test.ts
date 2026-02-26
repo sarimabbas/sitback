@@ -55,4 +55,15 @@ describe("cli help defaults", () => {
     expect(result.exitCode).toBe(0);
     expect(output).toContain('Default: "json5"');
   });
+
+  test("shows defaults for web command", () => {
+    const configDir = createTempDir("sitback-cli-help-");
+
+    const result = runCli(["web", "--help"], configDir);
+    const output = stripAnsi(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output).toContain('Default: "127.0.0.1"');
+    expect(output).toContain('Default: "3000"');
+  });
 });
