@@ -42,6 +42,19 @@ bun run packages/cli/src/index.ts todo add \
 For native subagents, prefer assigned mode.
 For worker pools, prefer pull queue mode.
 
+If the user already has a tag tree, reuse it.
+- Treat the project/epic leaf tag as the run root.
+- Create planner/worker todos under that root.
+- Do not create new top-level tag hierarchies.
+
+Example root: `work/client-a/mobile-app`
+
+Common child tags (optional but helpful):
+
+- `work/client-a/mobile-app/agent`
+
+If the user does not want child tags, keep everything on the project leaf and encode type in `work-notes`.
+
 ## 3) Create packet todos
 
 ```bash

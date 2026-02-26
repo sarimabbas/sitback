@@ -7,6 +7,11 @@ Use this when you are executing one packet todo.
 - Assigned mode: planner gave you a `TODO_ID`.
 - Pull queue mode: claim work from queue with `todo claim`.
 
+Tag scope rule:
+
+- Stay inside the project/epic root tag chosen by the planner.
+- In pull queue mode, use `--tag` under that root (for example `.../impl`).
+
 ## 2) Assigned mode
 
 Do not pull queue work. Operate on the assigned ID.
