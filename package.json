@@ -7,9 +7,16 @@
     "packages/*"
   ],
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   },
   "bin": {
     "sb": "src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.1",
+    "knip": "^5.85.0"
+  },
+  "scripts": {
+    "knip": "knip"
   }
 }
