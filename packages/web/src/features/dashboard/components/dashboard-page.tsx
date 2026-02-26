@@ -427,10 +427,10 @@ export function DashboardPage({ search, setSearch }: DashboardPageProps) {
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs">
                   <GitBranch className="size-3" />
-                  {viewMode === 'graph' ? graphDependencies.length : filteredDependencies.length} links
+                  {viewMode === 'graph' ? graphDependencies.length : filteredDependencies.length} Links
                 </span>
                 <span className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
-                  {viewMode === 'graph' ? graphTodos.length : filteredTodos.length} todos
+                  {viewMode === 'graph' ? graphTodos.length : filteredTodos.length} Todos
                 </span>
               </div>
 

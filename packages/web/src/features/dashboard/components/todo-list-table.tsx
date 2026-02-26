@@ -49,6 +49,13 @@ function statusBadgeVariant(status: DashboardTodo['status']) {
   return 'outline' as const
 }
 
+function formatStatus(status: DashboardTodo['status']) {
+  if (status === 'in_progress') return 'In Progress'
+  if (status === 'completed') return 'Completed'
+  if (status === 'cancelled') return 'Cancelled'
+  return 'Todo'
+}
+
 function isOverdue(dueDate: string | null) {
   if (!dueDate) {
     return false
@@ -160,7 +167,7 @@ export function TodoListTable({
             </p>
             <p className="flex items-center gap-1 text-[11px] text-slate-500">
               <User className="size-3" />
-              {row.original.assignee ?? 'unassigned'}
+              {row.original.assignee ?? 'Unassigned'}
             </p>
           </div>
         ),
@@ -170,7 +177,7 @@ export function TodoListTable({
         header: 'Status',
         cell: ({ row }) => (
           <Badge variant={statusBadgeVariant(row.original.status)}>
-            {row.original.status}
+            {formatStatus(row.original.status)}
           </Badge>
         ),
       },
@@ -179,7 +186,7 @@ export function TodoListTable({
         header: 'Priority',
         cell: ({ row }) => {
           if (row.original.priority === null) {
-            return <span className="text-xs text-slate-500">none</span>
+            return <span className="text-xs text-slate-500">None</span>
           }
 
           return (
@@ -194,7 +201,7 @@ export function TodoListTable({
         header: 'Due Date',
         cell: ({ row }) => {
           if (!row.original.dueDate) {
-            return <span className="text-xs text-slate-500">none</span>
+            return <span className="text-xs text-slate-500">None</span>
           }
 
           return (
@@ -212,11 +219,12 @@ export function TodoListTable({
       },
       {
         id: 'dependencies',
+        accessorFn: (row) => (predecessorMap.get(row.id) ?? []).length,
         header: 'Dependencies',
         cell: ({ row }) => {
           const ids = predecessorMap.get(row.original.id) ?? []
           if (ids.length === 0) {
-            return <span className="text-xs text-slate-500">none</span>
+            return <span className="text-xs text-slate-500">None</span>
           }
 
           return (
@@ -240,12 +248,13 @@ export function TodoListTable({
       },
       {
         id: 'tag',
+        accessorFn: (row) => (row.tagId ? (tagPathMap.get(row.tagId) ?? '') : ''),
         header: 'Tag',
         cell: ({ row }) => {
           if (!row.original.tagId) {
             return (
               <span className="inline-flex rounded border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-900">
-                untagged
+                Untagged
               </span>
             )
           }
@@ -257,7 +266,7 @@ export function TodoListTable({
             return (
               <div className="space-y-0.5">
                 <span className="inline-flex rounded border border-cyan-300 bg-cyan-100 px-1.5 py-0.5 text-xs font-medium text-cyan-900">
-                  same tag
+                  Same Tag
                 </span>
                 <p className="max-w-[180px] truncate text-xs text-slate-600">{path}</p>
               </div>
@@ -269,15 +278,16 @@ export function TodoListTable({
       },
       {
         id: 'blocked',
+        accessorFn: (row) => (row.isBlocked ? 1 : 0),
         header: 'Blocked',
         cell: ({ row }) =>
           row.original.isBlocked ? (
             <span className="inline-flex rounded border border-red-300 bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
-              blocked
+              Blocked
             </span>
           ) : (
             <span className="inline-flex rounded border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
-              clear
+              Clear
             </span>
           ),
       },
@@ -331,7 +341,7 @@ export function TodoListTable({
           {selectedTodoIds.length > 0 ? (
             <>
               <span className="rounded border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-xs text-cyan-900">
-                {selectedTodoIds.length} selected
+                {selectedTodoIds.length} Selected
               </span>
               <Select
                 value={bulkStatus}
@@ -342,10 +352,10 @@ export function TodoListTable({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Set status</SelectItem>
-                  <SelectItem value="todo">todo</SelectItem>
-                  <SelectItem value="in_progress">in_progress</SelectItem>
-                  <SelectItem value="completed">completed</SelectItem>
-                  <SelectItem value="cancelled">cancelled</SelectItem>
+                  <SelectItem value="todo">Todo</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -372,7 +382,7 @@ export function TodoListTable({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Set tag</SelectItem>
-                  <SelectItem value="__untagged__">untagged</SelectItem>
+                  <SelectItem value="__untagged__">Untagged</SelectItem>
                   {tagOptions.map(([id, path]) => (
                     <SelectItem key={id} value={String(id)}>
                       {path}
@@ -418,22 +428,22 @@ export function TodoListTable({
                   setRowSelection({})
                 }}
               >
-                Delete selected
+                Delete Selected
               </Button>
             </>
           ) : null}
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200">
+      <div className="min-h-[420px] flex-1 overflow-auto rounded-lg border border-slate-200 sm:min-h-[520px]">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="sticky top-0 z-10 bg-slate-100/95">
+              <TableRow key={headerGroup.id} className="bg-slate-100/95">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="whitespace-normal py-2 text-[11px] uppercase tracking-wide text-slate-600"
+                    className="sticky top-0 z-10 whitespace-normal bg-slate-100/95 py-2 text-[11px] uppercase tracking-wide text-slate-600"
                   >
                     {header.isPlaceholder ? null : (
                       header.column.getCanSort() ? (

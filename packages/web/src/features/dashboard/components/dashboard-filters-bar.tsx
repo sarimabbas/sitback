@@ -43,7 +43,7 @@ export function DashboardFiltersBar({
         autoComplete="off"
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Search by id, text, status, or tag…"
+        placeholder="Search by ID, text, status, or tag…"
       />
 
       <StatusMultiSelect value={statusFilters} onChange={onStatusFiltersChange} />
@@ -56,7 +56,7 @@ export function DashboardFiltersBar({
           <SelectValue placeholder="Blocked" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All block states</SelectItem>
+          <SelectItem value="all">All Block States</SelectItem>
           <SelectItem value="blocked">Blocked</SelectItem>
           <SelectItem value="unblocked">Unblocked</SelectItem>
         </SelectContent>
@@ -70,7 +70,7 @@ export function DashboardFiltersBar({
           <SelectValue placeholder="Assignee" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All assignees</SelectItem>
+          <SelectItem value="__all__">All Assignees</SelectItem>
           <SelectItem value="__unassigned__">Unassigned</SelectItem>
           {assigneeOptions.map((assignee) => (
             <SelectItem key={assignee} value={assignee}>
@@ -83,7 +83,7 @@ export function DashboardFiltersBar({
       <PathAutocompleteInput
         value={tagFilterPath}
         options={tagPaths}
-        placeholder="Type tag path filter"
+        placeholder="Type Tag Path Filter"
         onChange={onTagFilterPathChange}
         onSelect={onTagFilterPathChange}
       />

@@ -128,7 +128,7 @@ export function TodoGraphView({
 
   if (todos.length === 0) {
     return (
-      <section className="flex h-full min-h-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="flex h-full min-h-[420px] items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm sm:min-h-[520px]">
         <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
           No todos match the current filters.
         </p>
@@ -137,7 +137,7 @@ export function TodoGraphView({
   }
 
   return (
-    <section className="h-full min-h-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <section className="h-full min-h-[420px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:min-h-[520px]">
       <ReactFlow
         key={selectedTagPath ?? 'all-tags'}
         fitView

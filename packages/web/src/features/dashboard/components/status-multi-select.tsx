@@ -16,10 +16,10 @@ import { cn } from '@/lib/utils'
 import type { DashboardTodoStatus } from '../types'
 
 const STATUS_OPTIONS: Array<{ value: DashboardTodoStatus; label: string }> = [
-  { value: 'todo', label: 'todo' },
-  { value: 'in_progress', label: 'in_progress' },
-  { value: 'completed', label: 'completed' },
-  { value: 'cancelled', label: 'cancelled' },
+  { value: 'todo', label: 'Todo' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
 ]
 
 type StatusMultiSelectProps = {
@@ -44,10 +44,12 @@ export function StatusMultiSelect({ value, onChange }: StatusMultiSelectProps) {
 
   const triggerLabel =
     value.length === 0
-      ? 'All statuses'
+      ? 'All Statuses'
       : value.length <= 2
-        ? value.join(', ')
-        : `${value.length} statuses`
+        ? STATUS_OPTIONS.filter((option) => value.includes(option.value))
+            .map((option) => option.label)
+            .join(', ')
+        : `${value.length} Statuses`
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -68,7 +70,7 @@ export function StatusMultiSelect({ value, onChange }: StatusMultiSelectProps) {
             placeholder="Filter statuses…"
           />
           <CommandList>
-            <CommandEmpty>No status found.</CommandEmpty>
+            <CommandEmpty>No Status Found.</CommandEmpty>
             <CommandGroup>
               <CommandItem
                 value="__all__"
@@ -77,7 +79,7 @@ export function StatusMultiSelect({ value, onChange }: StatusMultiSelectProps) {
                 }}
               >
                 <Check className={cn('mr-2 size-4', value.length === 0 ? 'opacity-100' : 'opacity-0')} />
-                All statuses
+                All Statuses
               </CommandItem>
               {filtered.map((option) => {
                 const selected = selectedSet.has(option.value)
@@ -113,7 +115,7 @@ export function StatusMultiSelect({ value, onChange }: StatusMultiSelectProps) {
               onClick={() => onChange([])}
             >
               <X className="mr-1 size-3" />
-              Clear status filters
+              Clear Status Filters
             </Button>
           </div>
         ) : null}
