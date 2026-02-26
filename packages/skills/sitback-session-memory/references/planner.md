@@ -151,6 +151,11 @@ Contract:
 - Failure policy: <blocked|retry|replan>
 ```
 
+Worker context preload guidance:
+
+- In each packet note, tell workers to read predecessor work-notes.
+- Keep this bounded to avoid overload; context preload should be a quick orientation pass, not deep research.
+
 ## 7) Governance for DAG growth
 
 Pick one mode and write it in parent notes:

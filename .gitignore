@@ -36,5 +36,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # build artifacts
 *.bun-build
 
+# dogfood
+dogfood-output/
+
 # design docs
 design-docs/

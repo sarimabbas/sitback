@@ -6,12 +6,12 @@ import {
   validateDashboardSearch,
 } from '@/features/dashboard/url-state'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/dashboard')({
   validateSearch: validateDashboardSearch,
-  component: IndexRoute,
+  component: DashboardRoute,
 })
 
-function IndexRoute() {
+function DashboardRoute() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
 

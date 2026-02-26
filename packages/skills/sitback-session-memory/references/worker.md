@@ -87,3 +87,19 @@ Good `Result` lines include concrete evidence, for example:
 1. Re-read your packet todo.
 2. Resume from `Next`.
 3. Write a fresh checkpoint after first resumed action.
+
+## 7) Context from related todos (recommended with limits)
+
+Before starting a packet, read nearby context briefly:
+
+1. Parent todo work-notes (required)
+2. Immediate predecessor todo work-notes (required if present)
+3. Up to 2 sibling todos in the same lane (optional)
+
+Goal: pick up decisions and avoid duplicate work, not full replay.
+
+Overload guardrails:
+
+- Timebox
+- Stop once you can restate current objective + next step
+- If notes conflict, trust predecessors and add a risk line in your checkpoint

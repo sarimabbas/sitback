@@ -6,11 +6,10 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
-import Header from '../components/Header'
-
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
+import { Toaster } from '@/components/ui/sonner'
 
 import appCss from '../styles.css?url'
 
@@ -52,7 +51,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <TanStackQueryProvider>
-          <Header />
           {children}
           <TanStackDevtools
             config={{
@@ -66,6 +64,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               TanStackQueryDevtools,
             ]}
           />
+          <Toaster position="top-right" richColors />
         </TanStackQueryProvider>
         <Scripts />
       </body>
